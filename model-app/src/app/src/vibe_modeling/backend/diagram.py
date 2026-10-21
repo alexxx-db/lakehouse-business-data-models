@@ -821,7 +821,7 @@ def _invalidate_empty_layouts(
     Returns the number of rows deleted. Best-effort: logs and returns 0 on
     any failure, never raises.
 
-    Intended use: one-shot repair on affected deployments (e.g. the test workspace fork).
+    Intended use: one-shot repair on affected deployments (e.g. a forked Lakebase branch).
     Do NOT run against production without explicit confirmation.
     """
     try:

@@ -37,8 +37,6 @@ import {
  * data-driven flags
  * (ECM has no confidence; a base version has no predecessor → no
  * sparkline/deltas/touched-%).
- *
- * Design-of-record: docs/design/model-overview/README.md.
  */
 export function MetricsBand({
   metrics,

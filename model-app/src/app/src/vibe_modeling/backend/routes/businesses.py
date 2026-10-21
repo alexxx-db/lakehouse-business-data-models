@@ -183,6 +183,8 @@ def create_business(
         industry_id=_resolve_industry_id(session, data.industry_alignment),
         kind=data.kind,
         sector_id=data.sector_id,
+        business_domains=data.business_domains,
+        org_divisions=data.org_divisions,
     )
     session.add(business)
     session.commit()
@@ -257,6 +259,10 @@ def update_business(
     if "sector_id" in data.model_fields_set:
         _validate_sector_id(session, data.sector_id)
         business.sector_id = data.sector_id
+    if "business_domains" in data.model_fields_set:
+        business.business_domains = data.business_domains
+    if "org_divisions" in data.model_fields_set:
+        business.org_divisions = data.org_divisions
     business.updated_at = datetime.now(timezone.utc)
     session.add(business)
     session.commit()

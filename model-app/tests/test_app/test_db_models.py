@@ -15,8 +15,9 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "app", "src"))
 
+from sqlmodel import select
 from vibe_modeling.backend import db_models as db
-from vibe_modeling.backend.db_models import Run
+from vibe_modeling.backend.db_models import Run, AssessColumnSourceProfile
 
 
 class TestRunDefaults:
@@ -49,6 +50,14 @@ class TestDatabaseSchema:
             "subdomains", "product_reviews",
             # Vibe Inputs redesign (Task 4) — element rename/merge/delete lineage
             "run_element_lineage",
+            # Headless assessment (migration 0.8.0)
+            "assess_config", "assess_source_map", "assess_batch", "assess_domain_run",
+            "assess_domain_source", "assess_entity", "assess_column_mapping", "assess_gap",
+            "assess_pending_decision", "assess_decision_option", "assess_next_vibe",
+            "assess_handoff",
+            # Assessment results readability
+            "assess_summary", "assess_summary_item", "assess_decision_option_point",
+            "assess_decision_affected", "assess_next_vibe_entity",
         ]
         for table in expected:
             assert table in tables, f"Table '{table}' not created"
@@ -252,3 +261,91 @@ class TestModelVersionProvenanceColumns:
     def test_columns_present_on_table(self):
         cols = {c.name for c in db.ModelVersion.__table__.columns}
         assert {"agent_version", "release_version"} <= cols
+
+
+class TestAssessReadabilitySchema:
+    """Assessment results readability: summary / tiers / decision detail / next-vibe urgency."""
+
+    def test_new_columns_present(self):
+        cols = lambda m: set(m.__table__.columns.keys())  # noqa: E731
+        assert {"core_sourced", "core_total", "enrichment_sourced", "enrichment_total",
+                "deferred_fk_count", "grade_reason", "row_filter", "reported_letter"} <= cols(db.AssessEntity)
+        assert "tier" in cols(db.AssessColumnMapping)
+        assert {"context", "why_it_matters", "recommendation_rationale", "blocks_build",
+                "recommended_option_id"} <= cols(db.AssessPendingDecision)
+        assert "impact" in cols(db.AssessDecisionOption)
+        assert {"problem", "proposed_change", "impact_if_skipped", "urgency"} <= cols(db.AssessNextVibe)
+
+    def test_structure_axis_columns_present(self):
+        assert "reported_structure" in db.AssessEntity.__table__.columns.keys()
+        assert "kind" in db.AssessPendingDecision.__table__.columns.keys()
+
+    def test_new_tables_registered(self):
+        for m in (db.AssessSummary, db.AssessSummaryItem, db.AssessDecisionOptionPoint,
+                  db.AssessDecisionAffected, db.AssessNextVibeEntity, db.AssessColumnSourceProfile):
+            assert m in db.ASSESS_TABLES
+
+    def test_new_table_foreign_keys(self, engine):
+        from sqlalchemy import inspect as sa_inspect
+        insp = sa_inspect(engine)
+        def fks(t):
+            return {(fk["referred_table"], fk["options"].get("ondelete")) for fk in insp.get_foreign_keys(t)}
+        assert ("assess_domain_run", "CASCADE") in fks("assess_summary")
+        assert ("assess_summary", "CASCADE") in fks("assess_summary_item")
+        assert ("assess_decision_option", "CASCADE") in fks("assess_decision_option_point")
+        assert ("assess_pending_decision", "CASCADE") in fks("assess_decision_affected")
+        assert ("assess_next_vibe", "CASCADE") in fks("assess_next_vibe_entity")
+        assert ("assess_column_mapping", "CASCADE") in fks("assess_column_source_profile")
+
+    def test_round_trip(self, engine):
+        from sqlmodel import Session
+        with Session(engine) as session:
+            self._round_trip(session)
+
+    def _round_trip(self, session):
+        biz = db.Business(name="b")
+        session.add(biz); session.commit()
+        mv = db.ModelVersion(business_id=biz.id, version=1)
+        session.add(mv); session.commit()
+        dom = db.Domain(version_id=mv.id, name="d")
+        batch = db.AssessBatch(business_id=biz.id, version_id=mv.id)
+        session.add(dom); session.add(batch); session.commit()
+        run = db.AssessDomainRun(batch_id=batch.id, domain_id=dom.id)
+        session.add(run); session.commit()
+
+        session.add(db.AssessSummary(domain_run_id=run.id, headline="h", verdict="ready",
+                                     verdict_reason="r", recommended_next_step="n"))
+        session.commit()
+        session.add(db.AssessSummaryItem(summary_id=run.id, kind="finding", ordinal=0, text="t"))
+        ent = db.AssessEntity(domain_run_id=run.id, name="e", grade="partial", core_sourced=3,
+                              core_total=4, enrichment_sourced=1, enrichment_total=5,
+                              deferred_fk_count=2, grade_reason="why", row_filter="x=1",
+                              reported_letter="B")
+        session.add(ent); session.commit()
+        col = db.AssessColumnMapping(entity_id=ent.id, target="c", status="mapped", tier="core")
+        session.add(col); session.commit()
+        session.add(db.AssessColumnSourceProfile(column_id=col.id, ordinal=0, system="src1",
+                                                 source_table="t1", source_column="c1", role="populates",
+                                                 row_count=100, null_pct=2.5, note="test"))
+        dec = db.AssessPendingDecision(domain_run_id=run.id, question="q", context="c",
+                                       why_it_matters="w", recommendation_rationale="rr",
+                                       blocks_build=True)
+        session.add(dec); session.commit()
+        opt = db.AssessDecisionOption(decision_id=dec.id, label="l", impact="i")
+        session.add(opt); session.commit()
+        dec.recommended_option_id = opt.id
+        session.add(dec)
+        session.add(db.AssessDecisionOptionPoint(option_id=opt.id, kind="pro", ordinal=0, text="p"))
+        session.add(db.AssessDecisionAffected(decision_id=dec.id, entity="e", column="c"))
+        nv = db.AssessNextVibe(domain_run_id=run.id, text="t", problem="p", proposed_change="pc",
+                               impact_if_skipped="ii", urgency="high")
+        session.add(nv); session.commit()
+        session.add(db.AssessNextVibeEntity(next_vibe_id=nv.id, entity="e"))
+        session.commit()
+
+        session.refresh(ent); session.refresh(dec)
+        assert (ent.core_sourced, ent.reported_letter, ent.row_filter) == (3, "B", "x=1")
+        assert dec.recommended_option_id == opt.id and dec.blocks_build is True
+        assert nv.urgency == "high"
+        profile = session.exec(select(AssessColumnSourceProfile)).first()
+        assert profile.system == "src1" and profile.row_count == 100 and profile.null_pct == 2.5

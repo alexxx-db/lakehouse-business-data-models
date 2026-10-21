@@ -1,0 +1,12 @@
+{"type":"object","additionalProperties":false,
+ "required":["status","phases_completed","stopped_at","entity_grades","blocked_entities","pending_human_decisions","artifacts","notes"],
+ "properties":{
+  "status":{"type":"string","enum":["completed_phase_4","partial","failed"]},
+  "phases_completed":{"type":"array","items":{"type":"string"}},
+  "stopped_at":{"type":"string"},
+  "entity_grades":{"type":"object","additionalProperties":false,"required":["full","partial","blocked"],
+     "properties":{"full":{"type":"integer"},"partial":{"type":"integer"},"blocked":{"type":"integer"}}},
+  "blocked_entities":{"type":"array","items":{"type":"string"}},
+  "pending_human_decisions":{"type":"array","items":{"type":"string"}},
+  "artifacts":{"type":"array","items":{"type":"string"}},
+  "notes":{"type":"string"}}}

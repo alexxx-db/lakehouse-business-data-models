@@ -24,5 +24,14 @@
     "v0.7.6",
     "v0.7.7",
     "v0.8.0"
-  ]
+  ],
+  "agent_source": {
+    "repo": "databricks-industry-solutions/lakehouse-industry-data-models",
+    "commit": "511078e68fb8b88ff2a7bd9498f3a52351991bfe",
+    "notebook_path": "model-agent/agent/dbx_vibe_modelling_agent.ipynb",
+    "notebook_sha256": "90595dda8a4c7cb793bcfcf800d74851e825cca6276473c32fc5951236a3d7f3",
+    "rules_path": "model-agent/rules/vibe-data-modelling-rules.csv",
+    "rules_file": "vibe-data-modelling-rules.csv",
+    "rules_sha256": "fc7fca89c151a23d0e4d03327667c45b38fb82b9a90853366de23d5f9c5c5867"
+  }
 }

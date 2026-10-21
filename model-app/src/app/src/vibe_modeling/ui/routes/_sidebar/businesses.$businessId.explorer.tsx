@@ -15,6 +15,7 @@ import {
   useListSectorsSuspense,
 } from "@/lib/api";
 import { selector } from "@/lib/selector";
+import { useAssessReady } from "@/lib/assessment";
 import { formatDate } from "@/lib/date";
 import { industryDisplayName } from "@/lib/industry";
 import { sectorDisplayName } from "@/lib/sector";
@@ -36,6 +37,7 @@ import {
   Building2,
   GitBranch,
   ListTodo,
+  ClipboardCheck,
   Pencil,
   Plus,
   Rocket,
@@ -111,6 +113,7 @@ function ExplorerLanding({ businessId }: { businessId: string }) {
   });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { ready: assessReady } = useAssessReady();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const versionCount = versions?.length ?? 0;
@@ -195,6 +198,14 @@ function ExplorerLanding({ businessId }: { businessId: string }) {
               Runs
             </Link>
           </Button>
+          {assessReady && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/businesses/$businessId/assessments" params={{ businessId }}>
+                <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                Assessments
+              </Link>
+            </Button>
+          )}
           {/* Destructive-outline keeps text readable in the light theme while
               still signalling the danger of the action. */}
           <Button

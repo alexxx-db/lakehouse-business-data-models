@@ -62,10 +62,10 @@ def test_derives_bigint_from_uuid_on_runop_when_run_bigint_unset():
     rollback_state_json is empty. Resolver derives the BIGINT
     deterministically — no contract on the dispatcher.
 
-    THIS is the case that broke the test workspace: ``_generation_common.dispatch_generation_op``
+    THIS is the case that broke a live deployment: ``_generation_common.dispatch_generation_op``
     persists the UUID via ``_persist_run_id`` and returns ``extra={}``.
     """
-    uuid = "b13e0e83-e711-4dc0-9771-aff31b157f38"  # the actual the test workspace session
+    uuid = "b13e0e83-e711-4dc0-9771-aff31b157f38"  # the actual failing session
     expected = session_id_to_bigint(uuid)
 
     run = Run(
@@ -165,7 +165,7 @@ def test_priority_order_run_beats_uuid_beats_rollback():
 
 
 # --------------------------------------------------------------------
-# Drain-level integration: the actual the test workspace failure mode end-to-end.
+# Drain-level integration: the actual live failure mode end-to-end.
 # Mirrors test_orch_progress_session_resolution.py, but uses the
 # orchestrator-routed-with-only-UUID shape that broke the
 # vibe-modeling-clean run today.

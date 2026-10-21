@@ -102,6 +102,13 @@ MIGRATIONS = [
     ("agent_config", "source_github_app_secret_key", "VARCHAR DEFAULT ''"),
     ("agent_config", "source_token_secret_scope", "VARCHAR DEFAULT ''"),
     ("agent_config", "source_token_secret_key", "VARCHAR DEFAULT ''"),
+    # v_0_8_0: Domain Taxonomy Builder settings on the agent_config singleton
+    # ('' = no model service configured) and the wizard's proposed domains +
+    # coverage on businesses ('' = no proposal).
+    ("agent_config", "taxonomy_model_service", "VARCHAR DEFAULT ''"),
+    ("agent_config", "taxonomy_llm_max_concurrency", "INTEGER NOT NULL DEFAULT 6"),
+    ("businesses", "business_domains", "VARCHAR DEFAULT ''"),
+    ("businesses", "org_divisions", "VARCHAR DEFAULT ''"),
 ]
 
 WIDEN_TO_BIGINT = [

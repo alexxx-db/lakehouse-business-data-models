@@ -1,0 +1,86 @@
+{
+  "_comment": "BE/FE parity for the business name rule: backend/models.py BUSINESS_NAME_PATTERN (BusinessIn.name, TaxonomyIntake.company_name) and ui/components/taxonomy/intake-form.tsx BUSINESS_NAME_RE. Both must carry exactly this pattern and give these verdicts.",
+  "pattern": "^[A-Za-z0-9][A-Za-z0-9 _\\-&.,'()]{0,127}$",
+  "cases": [
+    [
+      "Acme",
+      true
+    ],
+    [
+      "Ridgeline Energy",
+      true
+    ],
+    [
+      "A",
+      true
+    ],
+    [
+      "3M",
+      true
+    ],
+    [
+      "AT&T Corp.",
+      true
+    ],
+    [
+      "O'Brien (Holdings), Ltd",
+      true
+    ],
+    [
+      "snake_case-name",
+      true
+    ],
+    [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      true
+    ],
+    [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      false
+    ],
+    [
+      "",
+      false
+    ],
+    [
+      " Acme",
+      false
+    ],
+    [
+      "-Acme",
+      false
+    ],
+    [
+      "_Acme",
+      false
+    ],
+    [
+      "Acme / Gas",
+      false
+    ],
+    [
+      "Acme: Gas",
+      false
+    ],
+    [
+      "Acme\nGas",
+      false
+    ],
+    [
+      "Acme\n",
+      false
+    ],
+    [
+      "Café",
+      false
+    ],
+    [
+      "Acme!",
+      false
+    ],
+    [
+      "Acme\"Gas",
+      false
+    ]
+  ]
+}

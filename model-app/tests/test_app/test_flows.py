@@ -317,3 +317,36 @@ def test_list_inputs_hydrates_mixed_anchors_in_one_call(client, engine, parent_e
     a_wide = by_id[wide_id]["anchor"]
     assert a_wide["level"] == "model_wide"
     assert a_wide["path"] == []
+
+
+def test_business_proposed_domains_round_trip(client):
+    """v_0_8_0: Create stores the wizard's proposed domains + coverage in the
+    first commit; GET returns them; an update that omits them keeps them; an
+    explicit empty update clears them; a non-preset coverage is refused."""
+    body = {
+        "name": "Proposal Co", "description": "d",
+        "business_domains": "customer, billing,  ,customer", "org_divisions": "Operations and Business",
+    }
+    created = client.post("/api/businesses", json=body, headers=HEADERS)
+    assert created.status_code == 200, created.text
+    bid = created.json()["id"]
+    assert created.json()["business_domains"] == "customer, billing"
+
+    got = client.get(f"/api/businesses/{bid}", headers=HEADERS).json()
+    assert (got["business_domains"], got["org_divisions"]) == ("customer, billing", "Operations and Business")
+
+    kept = client.put(f"/api/businesses/{bid}", json={"name": "Proposal Co", "description": "d2"}, headers=HEADERS)
+    assert (kept.json()["business_domains"], kept.json()["org_divisions"]) == ("customer, billing", "Operations and Business")
+
+    cleared = client.put(
+        f"/api/businesses/{bid}",
+        json={"name": "Proposal Co", "description": "d2", "business_domains": "", "org_divisions": ""},
+        headers=HEADERS,
+    )
+    assert (cleared.json()["business_domains"], cleared.json()["org_divisions"]) == ("", "")
+
+    bad = client.put(
+        f"/api/businesses/{bid}", json={"name": "Proposal Co", "description": "d2", "org_divisions": "All"},
+        headers=HEADERS,
+    )
+    assert bad.status_code == 422

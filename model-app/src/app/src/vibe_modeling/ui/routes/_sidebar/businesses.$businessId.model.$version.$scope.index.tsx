@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
+import { AssessButton } from "@/components/assessment/assess-button";
 import { toast } from "sonner";
 import { notifyError } from "@/lib/notify";
 import { invalidateEntityLists } from "@/lib/delete-invalidation";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/api";
 import { isNotFoundError } from "@/lib/api-error";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +58,9 @@ export const Route = createFileRoute(
         <ErrorBoundary
           // Re-throw non-404s so the parent generic boundary still
           // surfaces them. We only own the "version doesn't exist for
-          // this business" empty-state.
+          // this business" empty-state. Reset when the route params change
+          // (sidebar links reuse this mounted route) so the card clears.
+          resetKeys={[businessId, version, scope]}
           fallbackRender={({ error }) => {
             if (isNotFoundError(error)) {
               return (
@@ -88,7 +92,6 @@ function ModelVersionMissing({
   version: string;
   scope: string;
 }) {
-  const scopeLabel = scope ? scope.toUpperCase() : "";
   return (
     <Card>
       <CardHeader>
@@ -96,8 +99,7 @@ function ModelVersionMissing({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Version v={version}
-          {scopeLabel ? ` ${scopeLabel}` : ""} doesn't exist for this business.
+          Version {versionScopeLabel(version, scope)} doesn't exist for this business.
         </p>
         <Button asChild variant="outline" size="sm">
           <Link
@@ -161,7 +163,6 @@ export function ModelVersionPage({
     versions.find(
       (v: any) => v.version === Number(version) && (v.scope || "") === scope,
     ) ?? versions.find((v: any) => v.version === Number(version));
-  const scopeLabel = scope ? scope.toUpperCase() : "";
 
   const domainList = (model.domains ?? [])
     .filter((d) => d.change_status !== "deleted")
@@ -192,7 +193,7 @@ export function ModelVersionPage({
       to: "/businesses/$businessId/explorer",
       params: { businessId },
     },
-    { label: scopeLabel ? `v${version} ${scopeLabel}` : `v${version}` },
+    { label: versionScopeLabel(version, scope) },
   ]);
 
   return (
@@ -214,7 +215,18 @@ export function ModelVersionPage({
       onDomainNavigate={handleDomainNavigate}
       showDomainSelect={false}
       versionActions={
-        <DeleteVersionButton
+        <>
+          {(currentVersion as any)?.id && (
+            <AssessButton
+              businessId={businessId}
+              versionId={(currentVersion as any).id}
+              installed={
+                (currentVersion as any).deployment_status === "deployed" &&
+                !!(currentVersion as any).uc_catalog
+              }
+            />
+          )}
+          <DeleteVersionButton
           businessId={businessId}
           businessName={business.name}
           version={version}
@@ -223,6 +235,7 @@ export function ModelVersionPage({
           currentVersionId={(currentVersion as any)?.id}
           currentUcCatalog={(currentVersion as any)?.uc_catalog ?? ""}
         />
+        </>
       }
     />
   );
@@ -263,7 +276,6 @@ export function DeleteVersionButton({
   // to re-install). Imported-only versions (no uc_catalog) get the
   // checkbox hidden - the backend would reject them anyway.
   const canReinstallPrevious = prevVersion !== null && Boolean(currentUcCatalog);
-  const scopeLabel = scope ? scope.toUpperCase() : "";
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reinstallChecked, setReinstallChecked] = useState(false);
@@ -321,8 +333,7 @@ export function DeleteVersionButton({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete v{version}
-              {scopeLabel ? ` ${scopeLabel}` : ""} of {businessName}?
+              Delete {versionScopeLabel(version, scope)} of {businessName}?
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
@@ -343,8 +354,7 @@ export function DeleteVersionButton({
                       className="mt-0.5"
                     />
                     <span>
-                      Re-install v{prevVersion}
-                      {scopeLabel ? ` ${scopeLabel}` : ""} as the current
+                      Re-install {versionScopeLabel(prevVersion, scope)} as the current
                       deployed version after delete
                     </span>
                   </label>

@@ -22,12 +22,46 @@ Prerequisites:
 Install dependencies:
 
 ```bash
-# Backend (from the repo root, or wherever your venv lives)
-python -m pip install 'databricks-sdk>=0.74' 'psycopg[binary]' fastapi uvicorn pydantic-settings sqlmodel
+# Backend (from the repo root): creates src/app/.venv with the app installed
+# in editable mode, its runtime dependencies, and the `dev` group (ty, jsonschema)
+uv sync --project src/app
 
 # Frontend (from src/app)
 cd src/app
 bun install
+```
+
+The backend tests also need `pytest`, `pytest-asyncio` (for the async tests)
+and `httpx`, which are not in the `dev` group. `uv run --with` adds them for the test run (see below).
+
+If you use `pip` instead of `uv`, install the same set into your virtualenv:
+
+```bash
+python -m pip install -e src/app 'jsonschema>=4.0' pytest pytest-asyncio httpx
+```
+
+Two files under `src/app/src/vibe_modeling/` are generated and not checked in:
+
+- `_version.py` is written by the hatch version hook whenever the package is
+  built, including the editable install above.
+- `_metadata.py` is written by apx (`apx build` or `apx dev start`).
+
+If either is missing when you run the tests, create it by hand:
+
+```python
+# src/app/src/vibe_modeling/_version.py
+version = "<version>"  # use the version in src/app/pyproject.toml
+```
+
+```python
+# src/app/src/vibe_modeling/_metadata.py
+from pathlib import Path
+
+app_name = "vibe-modeling"
+app_entrypoint = "vibe_modeling.backend.app:app"
+app_slug = "vibe_modeling"
+api_prefix = "/api"
+dist_dir = Path(__file__).parent / "__dist__"
 ```
 
 The public tree pins the public npm registry (`registry.npmjs.org`) in
@@ -41,6 +75,8 @@ These checks run without a Databricks workspace and are the bar for a PR:
 
 ```bash
 # Python backend tests (from the repo root)
+uv run --project src/app --with pytest --with pytest-asyncio --with httpx pytest tests/test_app
+# or, in an activated virtualenv set up with pip:
 pytest tests/test_app
 
 # Frontend type-check and unit tests (from src/app)

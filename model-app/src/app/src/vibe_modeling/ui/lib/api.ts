@@ -60,6 +60,125 @@ export interface ArtifactPreview {
     path: string;
     size_bytes?: number | null;
 }
+export interface AssessBatchIn {
+    domains: DomainSourcesIn[];
+    etl_type?: "sdp_pipeline" | "notebook";
+    output_model?: "normalized" | "dimensional" | "hybrid";
+    reasoning_effort?: "low" | "medium" | "high";
+    reuse_prior_tiers?: boolean;
+    version_id: string;
+}
+export interface AssessBatchOut {
+    business_id: string;
+    created_at: string;
+    created_by: string;
+    domain_runs: AssessDomainRunOut[];
+    etl_type: string;
+    id: string;
+    output_model: string;
+    reasoning_effort: string;
+    scope: string;
+    status: string;
+    version: number;
+    version_id: string;
+}
+export interface AssessConfigIn {
+    default_reasoning_effort?: "low" | "medium" | "high";
+    max_concurrent_runs?: number;
+    reader_application_id: string;
+    warehouse_id?: string;
+}
+export interface AssessConfigOut {
+    app_application_id?: string;
+    default_reasoning_effort: string;
+    genie_version: string;
+    installed: boolean;
+    job_id: number | null;
+    job_url: string;
+    max_concurrent_runs: number;
+    missing: string[];
+    reader_application_id: string;
+    reader_display_name?: string;
+    ready: boolean;
+    skills_ref: string;
+    skills_version: string;
+    updated_at: string;
+    updated_by: string;
+    warehouse_id: string;
+    workspace_path: string;
+}
+export interface AssessDomainRunOut {
+    attempt: number;
+    databricks_run_id: number | null;
+    domain_id: string;
+    domain_name: string;
+    ended_at: string | null;
+    error_message: string;
+    genie_version: string;
+    id: string;
+    ingest_attempts?: number;
+    ingest_max_attempts?: number;
+    ingest_next_at?: string | null;
+    job_reader?: string;
+    job_url?: string;
+    last_message: string;
+    metamodel_location: string;
+    metamodel_version: string;
+    model_quality_score: number | null;
+    results_valid: boolean | null;
+    resume_at: string | null;
+    run_url: string;
+    runs_path?: string;
+    schema_version?: number | null;
+    skills_commit: string;
+    skills_version: string;
+    sources: SourceIn[];
+    stage: string;
+    started_at: string | null;
+    status: string;
+}
+export interface AssessEntityOut {
+    columns: ColumnMappingOut[];
+    core_sourced: number | null;
+    core_total: number | null;
+    coverage_pct: number | null;
+    deferred_fk: number;
+    deferred_fk_count: number | null;
+    domain_run_id: string;
+    dup_source: number;
+    enrichment_pct: number | null;
+    enrichment_sourced: number | null;
+    enrichment_total: number | null;
+    gap: number;
+    grade: string;
+    grade_reason: string;
+    id: string;
+    in_model: boolean;
+    letter_grade: string | null;
+    mapped: number;
+    name: string;
+    net_new_candidate: boolean;
+    primary_source: string;
+    product_id: string | null;
+    row_count: number | null;
+    row_filter: string;
+    structure: "sound" | "review" | "rework";
+    structure_refs: string[];
+}
+export interface AssessRelaunchIn {
+    domain_run_ids?: string[] | null;
+}
+export interface AssessResultsOut {
+    domain_run: AssessDomainRunOut;
+    entities: AssessEntityOut[];
+    gaps: GapOut[];
+    grades: Record<string, number>;
+    letter_counts: Record<string, number>;
+    next_vibes: NextVibeOut[];
+    pending_decisions: PendingDecisionOut[];
+    structure_counts: Record<string, number>;
+    summary: SummaryOut | null;
+}
 export interface AttributeOut {
     business_glossary_term?: string;
     change_status?: ChangeStatus;
@@ -80,6 +199,16 @@ export interface BaselineOut {
     model_id: string;
     scope?: string | null;
     version?: string | null;
+}
+export interface BulkAddNextVibesToFeedbackIn {
+    ids?: string[] | null;
+    urgency?: string | null;
+}
+export interface BulkNextVibeToFeedbackOut {
+    count_created: number;
+    count_reused: number;
+    failures?: NextVibeFeedbackFailureOut[];
+    items: NextVibeToFeedbackOut[];
 }
 export interface BundledAgentInfoOut {
     available: boolean;
@@ -121,11 +250,13 @@ export interface BusinessDigestDiff {
     mismatch_fields?: FieldMismatch[];
 }
 export interface BusinessIn {
+    business_domains?: string;
     business_vibes?: string;
     description: string;
     industry_alignment?: string;
     kind?: BusinessKind;
     name: string;
+    org_divisions?: string;
     sector_id?: string | null;
 }
 export const BusinessKind = {
@@ -146,6 +277,7 @@ export interface BusinessListOut {
     source_version?: number | null;
 }
 export interface BusinessOut {
+    business_domains?: string;
     business_vibes?: string;
     created_at: string;
     description: string;
@@ -153,6 +285,7 @@ export interface BusinessOut {
     industry_alignment: string;
     kind?: BusinessKind;
     name: string;
+    org_divisions?: string;
     sector_id?: string | null;
     source_industry_id?: string | null;
     source_repo_path?: string | null;
@@ -199,6 +332,14 @@ export const ChangeStatus = {
     deleted: "deleted"
 } as const;
 export type ChangeStatus = typeof ChangeStatus[keyof typeof ChangeStatus];
+export interface Check {
+    detail?: string;
+    fix_action?: string;
+    fix_sql?: string;
+    key: string;
+    label: string;
+    state: "ok" | "blocked" | "unverified";
+}
 export interface ClientGatewayErrorIn {
     attempt: number;
     context?: string | null;
@@ -208,6 +349,26 @@ export interface ClientGatewayErrorIn {
 }
 export interface ClientTelemetryAck {
     logged: boolean;
+}
+export interface ColumnMappingOut {
+    attribute_id: string | null;
+    date_format: string;
+    distinct_count: number | null;
+    dup_source: boolean;
+    entity_id: string;
+    evidence: string;
+    fk_orphans: number | null;
+    id: string;
+    in_model: boolean;
+    null_pct: number | null;
+    profiles_by_source?: SourceProfileOut[];
+    row_count: number | null;
+    source_column: string;
+    source_table: string;
+    status: string;
+    target: string;
+    tier: string;
+    transform: string;
 }
 export interface CompileIn {
     input_ids?: string[];
@@ -227,6 +388,31 @@ export interface CompiledBlockOut {
     priority: VibeInputPriority;
     section_path: string[];
     text: string;
+}
+export interface CurrentUserEmailOut {
+    value: string;
+}
+export interface CurrentUserOut {
+    display_name: string;
+    emails: CurrentUserEmailOut[];
+    user_name: string;
+}
+export interface DecisionAffectedOut {
+    column: string;
+    entity: string;
+}
+export interface DecisionAnswerIn {
+    option_id?: string | null;
+    text?: string;
+}
+export interface DecisionOptionOut {
+    cons: string[];
+    id: string;
+    impact: string;
+    label: string;
+    ordinal: number;
+    pros: string[];
+    recommended: boolean;
 }
 export interface DeleteVersionOut {
     deleted_version: number;
@@ -315,6 +501,20 @@ export const DiscoveryMode = {
     lazy: "lazy"
 } as const;
 export type DiscoveryMode = typeof DiscoveryMode[keyof typeof DiscoveryMode];
+export interface DocContentOut {
+    content: string;
+    path: string;
+    truncated: boolean;
+}
+export interface DocEntry {
+    category: "design" | "commentary" | "other";
+    name: string;
+    path: string;
+}
+export interface DocsOut {
+    docs: DocEntry[];
+    folder_url: string;
+}
 export interface DomainConnectivityOut {
     fk_count: number;
     source_domain: string;
@@ -328,6 +528,12 @@ export interface DomainDetailOut {
     products?: ProductSummaryOut[];
     references?: string;
 }
+export interface DomainReadiness {
+    blocked: boolean;
+    checks: Check[];
+    domain_id: string;
+    domain_name: string;
+}
 export interface DomainReviewProgressOut {
     domain?: string;
     domain_id: string;
@@ -335,6 +541,10 @@ export interface DomainReviewProgressOut {
     review_needed?: number;
     review_pct?: number;
     reviewed?: number;
+}
+export interface DomainSourcesIn {
+    domain_id: string;
+    sources: SourceIn[];
 }
 export interface DomainSummaryOut {
     change_status?: ChangeStatus;
@@ -438,6 +648,16 @@ export interface FieldMismatch {
     field: string;
     source_value: string;
 }
+export interface GapOut {
+    ask: string;
+    column: string;
+    description: string;
+    domain_run_id: string;
+    entity: string;
+    gap_type: string;
+    id: string;
+    status: string;
+}
 export interface GithubConfigIn {
     auth_mode?: string;
     connection_name?: string;
@@ -456,6 +676,28 @@ export interface GithubConfigOut {
 }
 export interface HTTPValidationError {
     detail?: ValidationError[];
+}
+export interface HandoffIn {
+    path?: string | null;
+}
+export interface HandoffOut {
+    created_at: string | null;
+    created_by: string;
+    domain_run_id: string;
+    expected_handoffs: string[];
+    folder_url: string;
+    next_steps: NextStepOut[];
+    path: string | null;
+    prompts: HandoffPrompt[];
+    skills: SkillStatus[];
+    skills_note?: string;
+    user_scope_note: string;
+}
+export interface HandoffPrompt {
+    key: "continue" | "build" | "gold" | "validate" | "document";
+    prompt: string;
+    skill: string;
+    title: string;
 }
 export interface HealthOut {
     in_flight_runs?: number;
@@ -547,6 +789,16 @@ export interface InstallBundledAgentOut {
     overwritten: boolean;
     path: string;
     version: string;
+}
+export interface InstallSkillsIn {
+    names?: string[];
+    update?: string[];
+}
+export interface InstallSkillsOut {
+    installed: string[];
+    skills: SkillStatus[];
+    skipped: string[];
+    updated: string[];
 }
 export interface InstallationStatusOut {
     catalog_present: boolean;
@@ -675,6 +927,12 @@ export interface ModelVersionOut {
     version: number;
     vibe_instructions: string;
 }
+export interface NextStepOut {
+    detail: string;
+    done?: boolean;
+    order: number;
+    title: string;
+}
 export const NextVibeCategory = {
     static_analysis: "static_analysis",
     priority_remediation: "priority_remediation",
@@ -686,6 +944,10 @@ export interface NextVibeCategoryCountsOut {
     priority_remediation?: number;
     static_analysis?: number;
     total?: number;
+}
+export interface NextVibeFeedbackFailureOut {
+    message: string;
+    next_vibe_id: string;
 }
 export interface NextVibeItem {
     description?: string;
@@ -701,12 +963,53 @@ export interface NextVibeMetricsOut {
     total_open?: number;
     version_id: string;
 }
+export interface NextVibeOut {
+    affected_entities: string[];
+    category: string;
+    confidence: number | null;
+    domain_run_id: string;
+    feedback_input_id?: string | null;
+    id: string;
+    impact_if_skipped: string;
+    priority: number | null;
+    problem: string;
+    proposed_change: string;
+    text: string;
+    urgency: string;
+}
+export interface NextVibeToFeedbackOut {
+    created: boolean;
+    feedback_input_id: string;
+    next_vibe_id: string;
+}
 export interface NextVibesOut {
     confidence_score?: number | null;
     items?: NextVibeItem[];
     model_version_id: string;
     status?: string;
     summary?: string;
+}
+export interface PendingDecisionOut {
+    affected: DecisionAffectedOut[];
+    answer_option_id: string | null;
+    answer_status: string;
+    answer_text: string;
+    answered_at: string | null;
+    answered_by: string;
+    blocks_build: boolean;
+    context: string;
+    default_taken: string;
+    domain_run_id: string;
+    entity: string;
+    evidence: string;
+    gate: string;
+    id: string;
+    kind: "structure" | "source" | "scope";
+    options: DecisionOptionOut[];
+    ordinal: number;
+    question: string;
+    recommendation_rationale: string;
+    why_it_matters: string;
 }
 export interface ProductDetailOut {
     attributes?: AttributeOut[];
@@ -782,6 +1085,14 @@ export interface PublishPreviewOut {
     manual_needed?: boolean;
     scope_mismatch?: boolean;
     tier: string;
+}
+export interface ReadinessIn {
+    domains: DomainSourcesIn[];
+    version_id: string;
+}
+export interface ReadinessOut {
+    domains: DomainReadiness[];
+    global_checks: Check[];
 }
 export interface ReanchorIn {
     attribute_id?: string | null;
@@ -987,6 +1298,13 @@ export interface SectorOut {
     short_name: string;
     updated_at: string;
 }
+export interface SkillStatus {
+    bundled_version?: string;
+    installed_version?: string;
+    location?: "user" | "workspace" | "none";
+    name: string;
+    state: "present" | "update_available" | "missing" | "unknown";
+}
 export interface SourceAuthConfigIn {
     auth_mode?: string;
     github_app_id?: string;
@@ -1017,10 +1335,21 @@ export interface SourceCapabilities {
     source_kind: string;
     target_kinds: TargetKind[];
 }
+export interface SourceIn {
+    catalog_name: string;
+    schema_name: string;
+    source_name: string;
+}
 export interface SourceIndustry {
     id: string;
     name: string;
     sector_id: string;
+}
+export interface SourceMapIn {
+    sources: SourceIn[];
+}
+export interface SourceMapOut {
+    sources: SourceIn[];
 }
 export interface SourceModelRef {
     id: string;
@@ -1028,6 +1357,17 @@ export interface SourceModelRef {
     name: string;
     scope?: string | null;
     version?: string | null;
+}
+export interface SourceProfileOut {
+    distinct_count: number | null;
+    fk_orphans: number | null;
+    note: string;
+    null_pct: number | null;
+    role: string;
+    row_count: number | null;
+    source_column: string;
+    source_table: string;
+    system: string;
 }
 export interface SourceSector {
     id: string;
@@ -1039,6 +1379,14 @@ export interface SubdomainSummaryOut {
     name: string;
     product_count?: number;
 }
+export interface SummaryOut {
+    headline: string;
+    key_findings: string[];
+    recommended_next_step: string;
+    top_risks: string[];
+    verdict: string | null;
+    verdict_reason: string;
+}
 export const TargetKind = {
     model_json: "model_json",
     schemas: "schemas",
@@ -1049,6 +1397,115 @@ export const TargetKind = {
     vibes: "vibes"
 } as const;
 export type TargetKind = typeof TargetKind[keyof typeof TargetKind];
+export interface TaxonomyCheckOut {
+    checked_at: string;
+    message: string;
+    status: "ok" | "denied" | "not_found" | "busy" | "error";
+}
+export interface TaxonomyClaim {
+    provenance: "user" | "industry" | "confirm";
+    text: string;
+}
+export interface TaxonomyCompileIn {
+    sections?: Record<string, TaxonomySection>;
+    strictness?: "strict" | "guided";
+    tree: TaxonomyTree;
+}
+export interface TaxonomyCompileOut {
+    business_domains: string;
+    business_vibes: string;
+    clamp: string;
+    csv: string;
+    issues: TaxonomyIssue[];
+}
+export interface TaxonomyCondenseIn {
+    intake: TaxonomyIntake;
+    sections: Record<string, TaxonomySection>;
+    tree: TaxonomyTree;
+}
+export interface TaxonomyConfigIn {
+    max_concurrency?: number;
+    model_service?: string;
+}
+export interface TaxonomyConfigOut {
+    install_default_model_service: string;
+    installed: boolean;
+    last_check?: TaxonomyCheckOut | null;
+    max_concurrency: number;
+    model_service: string;
+    ready: boolean;
+}
+export interface TaxonomyDomain {
+    name: string;
+    schema_name?: string;
+    subdomains?: TaxonomySubdomain[];
+}
+export interface TaxonomyDraftCreated {
+    draft_id: string;
+}
+export interface TaxonomyDraftOut {
+    draft_id: string;
+    parts: Record<string, TaxonomyDraftPartOut>;
+    status: "running" | "done" | "failed" | "cancelled" | "timed_out" | "busy";
+}
+export interface TaxonomyDraftPartOut {
+    description?: string | null;
+    error?: string | null;
+    section?: TaxonomySection | null;
+    status: "pending" | "running" | "done" | "failed" | "cancelled" | "timed_out" | "busy";
+    tree?: TaxonomyTree | null;
+}
+export interface TaxonomyExampleOut {
+    company_name: string;
+    description: string;
+    industry: string;
+    sections: Record<string, TaxonomySection>;
+    tree: TaxonomyTree;
+}
+export interface TaxonomyIntake {
+    company_name: string;
+    industry: string;
+    key_systems?: string;
+    known_domains?: string;
+    one_liner?: string;
+    pasted_doc?: string;
+    regulators?: string;
+}
+export interface TaxonomyIssue {
+    domains?: number[];
+    message: string;
+    rule_id?: string;
+    severity: "error" | "warning";
+}
+export interface TaxonomyModelServicesOut {
+    message?: string | null;
+    services: string[];
+}
+export interface TaxonomyRelationship {
+    source: string;
+    targets: string[];
+}
+export interface TaxonomySection {
+    claims: TaxonomyClaim[];
+}
+export interface TaxonomySharedMaster {
+    entity: string;
+    home_domain: string;
+}
+export interface TaxonomySubdomain {
+    categories?: string[];
+    name: string;
+}
+export interface TaxonomyTree {
+    coverage?: "Operations" | "Operations and Business" | "Operations, Business and Corporate";
+    division_names?: string[];
+    domains: TaxonomyDomain[];
+    relationships?: TaxonomyRelationship[];
+    shared_masters?: TaxonomySharedMaster[];
+}
+export interface UserPreferenceDeleteOut {
+    deleted: boolean;
+}
 export interface UserPreferenceIn {
     value: string;
 }
@@ -1331,6 +1788,1064 @@ export function useInstallBundledAgent(options?: {
 }) {
     return useMutation({
         mutationFn: (vars)=>installBundledAgent(vars.params),
+        ...options?.mutation
+    });
+}
+export const getAssessConfig = async (options?: RequestInit): Promise<{
+    data: AssessConfigOut;
+}> =>{
+    const res = await fetch("/api/assess/config", {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessConfigKey = ()=>{
+    return [
+        "/api/assess/config"
+    ] as const;
+};
+export function useGetAssessConfig<TData = {
+    data: AssessConfigOut;
+}>(options?: {
+    query?: Omit<UseQueryOptions<{
+        data: AssessConfigOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessConfigKey(),
+        queryFn: ()=>getAssessConfig(),
+        ...options?.query
+    });
+}
+export function useGetAssessConfigSuspense<TData = {
+    data: AssessConfigOut;
+}>(options?: {
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: AssessConfigOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessConfigKey(),
+        queryFn: ()=>getAssessConfig(),
+        ...options?.query
+    });
+}
+export interface PutAssessConfigParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const putAssessConfig = async (data: AssessConfigIn, params?: PutAssessConfigParams, options?: RequestInit): Promise<{
+    data: AssessConfigOut;
+}> =>{
+    const res = await fetch("/api/assess/config", {
+        ...options,
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function usePutAssessConfig(options?: {
+    mutation?: UseMutationOptions<{
+        data: AssessConfigOut;
+    }, ApiError, {
+        params: PutAssessConfigParams;
+        data: AssessConfigIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>putAssessConfig(vars.data, vars.params),
+        ...options?.mutation
+    });
+}
+export const checkAssessReadiness = async (data: ReadinessIn, options?: RequestInit): Promise<{
+    data: ReadinessOut;
+}> =>{
+    const res = await fetch("/api/assess/readiness", {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCheckAssessReadiness(options?: {
+    mutation?: UseMutationOptions<{
+        data: ReadinessOut;
+    }, ApiError, ReadinessIn>;
+}) {
+    return useMutation({
+        mutationFn: (data)=>checkAssessReadiness(data),
+        ...options?.mutation
+    });
+}
+export interface AnswerAssessmentDecisionParams {
+    decision_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const answerAssessmentDecision = async (params: AnswerAssessmentDecisionParams, data: DecisionAnswerIn, options?: RequestInit): Promise<{
+    data: PendingDecisionOut;
+}> =>{
+    const res = await fetch(`/api/assessment-decisions/${params.decision_id}/answer`, {
+        ...options,
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useAnswerAssessmentDecision(options?: {
+    mutation?: UseMutationOptions<{
+        data: PendingDecisionOut;
+    }, ApiError, {
+        params: AnswerAssessmentDecisionParams;
+        data: DecisionAnswerIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>answerAssessmentDecision(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface ClearAssessmentDecisionAnswerParams {
+    decision_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const clearAssessmentDecisionAnswer = async (params: ClearAssessmentDecisionAnswerParams, options?: RequestInit): Promise<{
+    data: PendingDecisionOut;
+}> =>{
+    const res = await fetch(`/api/assessment-decisions/${params.decision_id}/answer`, {
+        ...options,
+        method: "DELETE",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useClearAssessmentDecisionAnswer(options?: {
+    mutation?: UseMutationOptions<{
+        data: PendingDecisionOut;
+    }, ApiError, {
+        params: ClearAssessmentDecisionAnswerParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>clearAssessmentDecisionAnswer(vars.params),
+        ...options?.mutation
+    });
+}
+export interface CancelAssessmentDomainRunParams {
+    domain_run_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const cancelAssessmentDomainRun = async (params: CancelAssessmentDomainRunParams, options?: RequestInit): Promise<{
+    data: AssessDomainRunOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/cancel`, {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCancelAssessmentDomainRun(options?: {
+    mutation?: UseMutationOptions<{
+        data: AssessDomainRunOut;
+    }, ApiError, {
+        params: CancelAssessmentDomainRunParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>cancelAssessmentDomainRun(vars.params),
+        ...options?.mutation
+    });
+}
+export interface ListAssessmentDocsParams {
+    domain_run_id: string;
+}
+export const listAssessmentDocs = async (params: ListAssessmentDocsParams, options?: RequestInit): Promise<{
+    data: DocsOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/docs`, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const listAssessmentDocsKey = (params?: ListAssessmentDocsParams)=>{
+    return [
+        "/api/assessment-domain-runs/{domain_run_id}/docs",
+        params
+    ] as const;
+};
+export function useListAssessmentDocs<TData = {
+    data: DocsOut;
+}>(options: {
+    params: ListAssessmentDocsParams;
+    query?: Omit<UseQueryOptions<{
+        data: DocsOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: listAssessmentDocsKey(options.params),
+        queryFn: ()=>listAssessmentDocs(options.params),
+        ...options?.query
+    });
+}
+export function useListAssessmentDocsSuspense<TData = {
+    data: DocsOut;
+}>(options: {
+    params: ListAssessmentDocsParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: DocsOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: listAssessmentDocsKey(options.params),
+        queryFn: ()=>listAssessmentDocs(options.params),
+        ...options?.query
+    });
+}
+export interface GetAssessmentDocContentParams {
+    domain_run_id: string;
+    path: string;
+}
+export const getAssessmentDocContent = async (params: GetAssessmentDocContentParams, options?: RequestInit): Promise<{
+    data: DocContentOut;
+}> =>{
+    const searchParams = new URLSearchParams();
+    if (params.path != null) searchParams.set("path", String(params.path));
+    const queryString = searchParams.toString();
+    const url = queryString ? `/api/assessment-domain-runs/${params.domain_run_id}/docs/content?${queryString}` : `/api/assessment-domain-runs/${params.domain_run_id}/docs/content`;
+    const res = await fetch(url, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessmentDocContentKey = (params?: GetAssessmentDocContentParams)=>{
+    return [
+        "/api/assessment-domain-runs/{domain_run_id}/docs/content",
+        params
+    ] as const;
+};
+export function useGetAssessmentDocContent<TData = {
+    data: DocContentOut;
+}>(options: {
+    params: GetAssessmentDocContentParams;
+    query?: Omit<UseQueryOptions<{
+        data: DocContentOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessmentDocContentKey(options.params),
+        queryFn: ()=>getAssessmentDocContent(options.params),
+        ...options?.query
+    });
+}
+export function useGetAssessmentDocContentSuspense<TData = {
+    data: DocContentOut;
+}>(options: {
+    params: GetAssessmentDocContentParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: DocContentOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessmentDocContentKey(options.params),
+        queryFn: ()=>getAssessmentDocContent(options.params),
+        ...options?.query
+    });
+}
+export interface GetAssessmentHandoffParams {
+    domain_run_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const getAssessmentHandoff = async (params: GetAssessmentHandoffParams, options?: RequestInit): Promise<{
+    data: HandoffOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/handoff`, {
+        ...options,
+        method: "GET",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessmentHandoffKey = (params?: GetAssessmentHandoffParams)=>{
+    return [
+        "/api/assessment-domain-runs/{domain_run_id}/handoff",
+        params
+    ] as const;
+};
+export function useGetAssessmentHandoff<TData = {
+    data: HandoffOut;
+}>(options: {
+    params: GetAssessmentHandoffParams;
+    query?: Omit<UseQueryOptions<{
+        data: HandoffOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessmentHandoffKey(options.params),
+        queryFn: ()=>getAssessmentHandoff(options.params),
+        ...options?.query
+    });
+}
+export function useGetAssessmentHandoffSuspense<TData = {
+    data: HandoffOut;
+}>(options: {
+    params: GetAssessmentHandoffParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: HandoffOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessmentHandoffKey(options.params),
+        queryFn: ()=>getAssessmentHandoff(options.params),
+        ...options?.query
+    });
+}
+export interface CreateAssessmentHandoffParams {
+    domain_run_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const createAssessmentHandoff = async (params: CreateAssessmentHandoffParams, data: HandoffIn, options?: RequestInit): Promise<{
+    data: HandoffOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/handoff`, {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCreateAssessmentHandoff(options?: {
+    mutation?: UseMutationOptions<{
+        data: HandoffOut;
+    }, ApiError, {
+        params: CreateAssessmentHandoffParams;
+        data: HandoffIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>createAssessmentHandoff(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface InstallAssessmentSkillsParams {
+    domain_run_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const installAssessmentSkills = async (params: InstallAssessmentSkillsParams, data: InstallSkillsIn, options?: RequestInit): Promise<{
+    data: InstallSkillsOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/handoff/install-skills`, {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useInstallAssessmentSkills(options?: {
+    mutation?: UseMutationOptions<{
+        data: InstallSkillsOut;
+    }, ApiError, {
+        params: InstallAssessmentSkillsParams;
+        data: InstallSkillsIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>installAssessmentSkills(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface AddNextVibesToFeedbackParams {
+    domain_run_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const addNextVibesToFeedback = async (params: AddNextVibesToFeedbackParams, data: BulkAddNextVibesToFeedbackIn, options?: RequestInit): Promise<{
+    data: BulkNextVibeToFeedbackOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/next-vibes/feedback/bulk`, {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useAddNextVibesToFeedback(options?: {
+    mutation?: UseMutationOptions<{
+        data: BulkNextVibeToFeedbackOut;
+    }, ApiError, {
+        params: AddNextVibesToFeedbackParams;
+        data: BulkAddNextVibesToFeedbackIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>addNextVibesToFeedback(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface AddNextVibeToFeedbackParams {
+    domain_run_id: string;
+    next_vibe_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const addNextVibeToFeedback = async (params: AddNextVibeToFeedbackParams, options?: RequestInit): Promise<{
+    data: NextVibeToFeedbackOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/next-vibes/${params.next_vibe_id}/feedback`, {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useAddNextVibeToFeedback(options?: {
+    mutation?: UseMutationOptions<{
+        data: NextVibeToFeedbackOut;
+    }, ApiError, {
+        params: AddNextVibeToFeedbackParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>addNextVibeToFeedback(vars.params),
+        ...options?.mutation
+    });
+}
+export interface GetAssessmentResultsParams {
+    domain_run_id: string;
+}
+export const getAssessmentResults = async (params: GetAssessmentResultsParams, options?: RequestInit): Promise<{
+    data: AssessResultsOut;
+}> =>{
+    const res = await fetch(`/api/assessment-domain-runs/${params.domain_run_id}/results`, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessmentResultsKey = (params?: GetAssessmentResultsParams)=>{
+    return [
+        "/api/assessment-domain-runs/{domain_run_id}/results",
+        params
+    ] as const;
+};
+export function useGetAssessmentResults<TData = {
+    data: AssessResultsOut;
+}>(options: {
+    params: GetAssessmentResultsParams;
+    query?: Omit<UseQueryOptions<{
+        data: AssessResultsOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessmentResultsKey(options.params),
+        queryFn: ()=>getAssessmentResults(options.params),
+        ...options?.query
+    });
+}
+export function useGetAssessmentResultsSuspense<TData = {
+    data: AssessResultsOut;
+}>(options: {
+    params: GetAssessmentResultsParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: AssessResultsOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessmentResultsKey(options.params),
+        queryFn: ()=>getAssessmentResults(options.params),
+        ...options?.query
+    });
+}
+export interface GetAssessmentParams {
+    batch_id: string;
+}
+export const getAssessment = async (params: GetAssessmentParams, options?: RequestInit): Promise<{
+    data: AssessBatchOut;
+}> =>{
+    const res = await fetch(`/api/assessments/${params.batch_id}`, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessmentKey = (params?: GetAssessmentParams)=>{
+    return [
+        "/api/assessments/{batch_id}",
+        params
+    ] as const;
+};
+export function useGetAssessment<TData = {
+    data: AssessBatchOut;
+}>(options: {
+    params: GetAssessmentParams;
+    query?: Omit<UseQueryOptions<{
+        data: AssessBatchOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessmentKey(options.params),
+        queryFn: ()=>getAssessment(options.params),
+        ...options?.query
+    });
+}
+export function useGetAssessmentSuspense<TData = {
+    data: AssessBatchOut;
+}>(options: {
+    params: GetAssessmentParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: AssessBatchOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessmentKey(options.params),
+        queryFn: ()=>getAssessment(options.params),
+        ...options?.query
+    });
+}
+export interface CancelAssessmentParams {
+    batch_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const cancelAssessment = async (params: CancelAssessmentParams, options?: RequestInit): Promise<{
+    data: AssessBatchOut;
+}> =>{
+    const res = await fetch(`/api/assessments/${params.batch_id}/cancel`, {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCancelAssessment(options?: {
+    mutation?: UseMutationOptions<{
+        data: AssessBatchOut;
+    }, ApiError, {
+        params: CancelAssessmentParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>cancelAssessment(vars.params),
+        ...options?.mutation
+    });
+}
+export interface RelaunchAssessmentParams {
+    batch_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const relaunchAssessment = async (params: RelaunchAssessmentParams, data: AssessRelaunchIn | null, options?: RequestInit): Promise<{
+    data: AssessBatchOut;
+}> =>{
+    const res = await fetch(`/api/assessments/${params.batch_id}/relaunch`, {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useRelaunchAssessment(options?: {
+    mutation?: UseMutationOptions<{
+        data: AssessBatchOut;
+    }, ApiError, {
+        params: RelaunchAssessmentParams;
+        data: AssessRelaunchIn | null;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>relaunchAssessment(vars.params, vars.data),
         ...options?.mutation
     });
 }
@@ -1650,6 +3165,254 @@ export function useDeleteBusiness(options?: {
 }) {
     return useMutation({
         mutationFn: (vars)=>deleteBusiness(vars.params),
+        ...options?.mutation
+    });
+}
+export interface GetAssessSourceMapParams {
+    business_id: string;
+}
+export const getAssessSourceMap = async (params: GetAssessSourceMapParams, options?: RequestInit): Promise<{
+    data: SourceMapOut;
+}> =>{
+    const res = await fetch(`/api/businesses/${params.business_id}/assess-source-map`, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getAssessSourceMapKey = (params?: GetAssessSourceMapParams)=>{
+    return [
+        "/api/businesses/{business_id}/assess-source-map",
+        params
+    ] as const;
+};
+export function useGetAssessSourceMap<TData = {
+    data: SourceMapOut;
+}>(options: {
+    params: GetAssessSourceMapParams;
+    query?: Omit<UseQueryOptions<{
+        data: SourceMapOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getAssessSourceMapKey(options.params),
+        queryFn: ()=>getAssessSourceMap(options.params),
+        ...options?.query
+    });
+}
+export function useGetAssessSourceMapSuspense<TData = {
+    data: SourceMapOut;
+}>(options: {
+    params: GetAssessSourceMapParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: SourceMapOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getAssessSourceMapKey(options.params),
+        queryFn: ()=>getAssessSourceMap(options.params),
+        ...options?.query
+    });
+}
+export interface PutAssessSourceMapParams {
+    business_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const putAssessSourceMap = async (params: PutAssessSourceMapParams, data: SourceMapIn, options?: RequestInit): Promise<{
+    data: SourceMapOut;
+}> =>{
+    const res = await fetch(`/api/businesses/${params.business_id}/assess-source-map`, {
+        ...options,
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function usePutAssessSourceMap(options?: {
+    mutation?: UseMutationOptions<{
+        data: SourceMapOut;
+    }, ApiError, {
+        params: PutAssessSourceMapParams;
+        data: SourceMapIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>putAssessSourceMap(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface ListAssessmentsParams {
+    business_id: string;
+}
+export const listAssessments = async (params: ListAssessmentsParams, options?: RequestInit): Promise<{
+    data: AssessBatchOut[];
+}> =>{
+    const res = await fetch(`/api/businesses/${params.business_id}/assessments`, {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const listAssessmentsKey = (params?: ListAssessmentsParams)=>{
+    return [
+        "/api/businesses/{business_id}/assessments",
+        params
+    ] as const;
+};
+export function useListAssessments<TData = {
+    data: AssessBatchOut[];
+}>(options: {
+    params: ListAssessmentsParams;
+    query?: Omit<UseQueryOptions<{
+        data: AssessBatchOut[];
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: listAssessmentsKey(options.params),
+        queryFn: ()=>listAssessments(options.params),
+        ...options?.query
+    });
+}
+export function useListAssessmentsSuspense<TData = {
+    data: AssessBatchOut[];
+}>(options: {
+    params: ListAssessmentsParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: AssessBatchOut[];
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: listAssessmentsKey(options.params),
+        queryFn: ()=>listAssessments(options.params),
+        ...options?.query
+    });
+}
+export interface LaunchAssessmentParams {
+    business_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const launchAssessment = async (params: LaunchAssessmentParams, data: AssessBatchIn, options?: RequestInit): Promise<{
+    data: AssessBatchOut;
+}> =>{
+    const res = await fetch(`/api/businesses/${params.business_id}/assessments`, {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useLaunchAssessment(options?: {
+    mutation?: UseMutationOptions<{
+        data: AssessBatchOut;
+    }, ApiError, {
+        params: LaunchAssessmentParams;
+        data: AssessBatchIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>launchAssessment(vars.params, vars.data),
         ...options?.mutation
     });
 }
@@ -7086,6 +8849,269 @@ export function useUpdateSourceAuthConfig(options?: {
         ...options?.mutation
     });
 }
+export const getTaxonomyConfig = async (options?: RequestInit): Promise<{
+    data: TaxonomyConfigOut;
+}> =>{
+    const res = await fetch("/api/config/taxonomy", {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getTaxonomyConfigKey = ()=>{
+    return [
+        "/api/config/taxonomy"
+    ] as const;
+};
+export function useGetTaxonomyConfig<TData = {
+    data: TaxonomyConfigOut;
+}>(options?: {
+    query?: Omit<UseQueryOptions<{
+        data: TaxonomyConfigOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getTaxonomyConfigKey(),
+        queryFn: ()=>getTaxonomyConfig(),
+        ...options?.query
+    });
+}
+export function useGetTaxonomyConfigSuspense<TData = {
+    data: TaxonomyConfigOut;
+}>(options?: {
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: TaxonomyConfigOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getTaxonomyConfigKey(),
+        queryFn: ()=>getTaxonomyConfig(),
+        ...options?.query
+    });
+}
+export interface UpdateTaxonomyConfigParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const updateTaxonomyConfig = async (data: TaxonomyConfigIn, params?: UpdateTaxonomyConfigParams, options?: RequestInit): Promise<{
+    data: TaxonomyConfigOut;
+}> =>{
+    const res = await fetch("/api/config/taxonomy", {
+        ...options,
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useUpdateTaxonomyConfig(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyConfigOut;
+    }, ApiError, {
+        params: UpdateTaxonomyConfigParams;
+        data: TaxonomyConfigIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>updateTaxonomyConfig(vars.data, vars.params),
+        ...options?.mutation
+    });
+}
+export interface ListTaxonomyModelServicesParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const listTaxonomyModelServices = async (params?: ListTaxonomyModelServicesParams, options?: RequestInit): Promise<{
+    data: TaxonomyModelServicesOut;
+}> =>{
+    const res = await fetch("/api/config/taxonomy/model-services", {
+        ...options,
+        method: "GET",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const listTaxonomyModelServicesKey = (params?: ListTaxonomyModelServicesParams)=>{
+    return [
+        "/api/config/taxonomy/model-services",
+        params
+    ] as const;
+};
+export function useListTaxonomyModelServices<TData = {
+    data: TaxonomyModelServicesOut;
+}>(options?: {
+    params?: ListTaxonomyModelServicesParams;
+    query?: Omit<UseQueryOptions<{
+        data: TaxonomyModelServicesOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: listTaxonomyModelServicesKey(options?.params),
+        queryFn: ()=>listTaxonomyModelServices(options?.params),
+        ...options?.query
+    });
+}
+export function useListTaxonomyModelServicesSuspense<TData = {
+    data: TaxonomyModelServicesOut;
+}>(options?: {
+    params?: ListTaxonomyModelServicesParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: TaxonomyModelServicesOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: listTaxonomyModelServicesKey(options?.params),
+        queryFn: ()=>listTaxonomyModelServices(options?.params),
+        ...options?.query
+    });
+}
+export interface TestTaxonomyModelServiceParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const testTaxonomyModelService = async (params?: TestTaxonomyModelServiceParams, options?: RequestInit): Promise<{
+    data: TaxonomyCheckOut;
+}> =>{
+    const res = await fetch("/api/config/taxonomy/test", {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useTestTaxonomyModelService(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyCheckOut;
+    }, ApiError, {
+        params: TestTaxonomyModelServiceParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>testTaxonomyModelService(vars.params),
+        ...options?.mutation
+    });
+}
 export const getWarehouse = async (options?: RequestInit): Promise<{
     data: Record<string, unknown>;
 }> =>{
@@ -7264,7 +9290,7 @@ export interface CurrentUserParams {
     "X-Forwarded-Access-Token"?: string | null;
 }
 export const currentUser = async (params?: CurrentUserParams, options?: RequestInit): Promise<{
-    data: unknown;
+    data: CurrentUserOut;
 }> =>{
     const res = await fetch("/api/current-user", {
         ...options,
@@ -7312,11 +9338,11 @@ export const currentUserKey = (params?: CurrentUserParams)=>{
     ] as const;
 };
 export function useCurrentUser<TData = {
-    data: unknown;
+    data: CurrentUserOut;
 }>(options?: {
     params?: CurrentUserParams;
     query?: Omit<UseQueryOptions<{
-        data: unknown;
+        data: CurrentUserOut;
     }, ApiError, TData>, "queryKey" | "queryFn">;
 }) {
     return useQuery({
@@ -7326,11 +9352,11 @@ export function useCurrentUser<TData = {
     });
 }
 export function useCurrentUserSuspense<TData = {
-    data: unknown;
+    data: CurrentUserOut;
 }>(options?: {
     params?: CurrentUserParams;
     query?: Omit<UseSuspenseQueryOptions<{
-        data: unknown;
+        data: CurrentUserOut;
     }, ApiError, TData>, "queryKey" | "queryFn">;
 }) {
     return useSuspenseQuery({
@@ -8745,6 +10771,436 @@ export function useListSourceIndustriesSuspense<TData = {
         ...options?.query
     });
 }
+export const compileTaxonomy = async (data: TaxonomyCompileIn, options?: RequestInit): Promise<{
+    data: TaxonomyCompileOut;
+}> =>{
+    const res = await fetch("/api/taxonomy/compile", {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCompileTaxonomy(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyCompileOut;
+    }, ApiError, TaxonomyCompileIn>;
+}) {
+    return useMutation({
+        mutationFn: (data)=>compileTaxonomy(data),
+        ...options?.mutation
+    });
+}
+export interface CondenseTaxonomyParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const condenseTaxonomy = async (data: TaxonomyCondenseIn, params?: CondenseTaxonomyParams, options?: RequestInit): Promise<{
+    data: TaxonomyDraftCreated;
+}> =>{
+    const res = await fetch("/api/taxonomy/condense", {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCondenseTaxonomy(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyDraftCreated;
+    }, ApiError, {
+        params: CondenseTaxonomyParams;
+        data: TaxonomyCondenseIn;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>condenseTaxonomy(vars.data, vars.params),
+        ...options?.mutation
+    });
+}
+export interface CreateTaxonomyDraftParams {
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const createTaxonomyDraft = async (data: TaxonomyIntake, params?: CreateTaxonomyDraftParams, options?: RequestInit): Promise<{
+    data: TaxonomyDraftCreated;
+}> =>{
+    const res = await fetch("/api/taxonomy/drafts", {
+        ...options,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCreateTaxonomyDraft(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyDraftCreated;
+    }, ApiError, {
+        params: CreateTaxonomyDraftParams;
+        data: TaxonomyIntake;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>createTaxonomyDraft(vars.data, vars.params),
+        ...options?.mutation
+    });
+}
+export interface GetTaxonomyDraftParams {
+    draft_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const getTaxonomyDraft = async (params: GetTaxonomyDraftParams, options?: RequestInit): Promise<{
+    data: TaxonomyDraftOut;
+}> =>{
+    const res = await fetch(`/api/taxonomy/drafts/${params.draft_id}`, {
+        ...options,
+        method: "GET",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getTaxonomyDraftKey = (params?: GetTaxonomyDraftParams)=>{
+    return [
+        "/api/taxonomy/drafts/{draft_id}",
+        params
+    ] as const;
+};
+export function useGetTaxonomyDraft<TData = {
+    data: TaxonomyDraftOut;
+}>(options: {
+    params: GetTaxonomyDraftParams;
+    query?: Omit<UseQueryOptions<{
+        data: TaxonomyDraftOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getTaxonomyDraftKey(options.params),
+        queryFn: ()=>getTaxonomyDraft(options.params),
+        ...options?.query
+    });
+}
+export function useGetTaxonomyDraftSuspense<TData = {
+    data: TaxonomyDraftOut;
+}>(options: {
+    params: GetTaxonomyDraftParams;
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: TaxonomyDraftOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getTaxonomyDraftKey(options.params),
+        queryFn: ()=>getTaxonomyDraft(options.params),
+        ...options?.query
+    });
+}
+export interface CancelTaxonomyDraftParams {
+    draft_id: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const cancelTaxonomyDraft = async (params: CancelTaxonomyDraftParams, options?: RequestInit): Promise<{
+    data: TaxonomyDraftOut;
+}> =>{
+    const res = await fetch(`/api/taxonomy/drafts/${params.draft_id}/cancel`, {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useCancelTaxonomyDraft(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyDraftOut;
+    }, ApiError, {
+        params: CancelTaxonomyDraftParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>cancelTaxonomyDraft(vars.params),
+        ...options?.mutation
+    });
+}
+export interface RetryTaxonomyDraftPartParams {
+    draft_id: string;
+    part: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const retryTaxonomyDraftPart = async (params: RetryTaxonomyDraftPartParams, options?: RequestInit): Promise<{
+    data: TaxonomyDraftOut;
+}> =>{
+    const res = await fetch(`/api/taxonomy/drafts/${params.draft_id}/parts/${params.part}/retry`, {
+        ...options,
+        method: "POST",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useRetryTaxonomyDraftPart(options?: {
+    mutation?: UseMutationOptions<{
+        data: TaxonomyDraftOut;
+    }, ApiError, {
+        params: RetryTaxonomyDraftPartParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>retryTaxonomyDraftPart(vars.params),
+        ...options?.mutation
+    });
+}
+export const getTaxonomyExample = async (options?: RequestInit): Promise<{
+    data: TaxonomyExampleOut;
+}> =>{
+    const res = await fetch("/api/taxonomy/example", {
+        ...options,
+        method: "GET"
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export const getTaxonomyExampleKey = ()=>{
+    return [
+        "/api/taxonomy/example"
+    ] as const;
+};
+export function useGetTaxonomyExample<TData = {
+    data: TaxonomyExampleOut;
+}>(options?: {
+    query?: Omit<UseQueryOptions<{
+        data: TaxonomyExampleOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useQuery({
+        queryKey: getTaxonomyExampleKey(),
+        queryFn: ()=>getTaxonomyExample(),
+        ...options?.query
+    });
+}
+export function useGetTaxonomyExampleSuspense<TData = {
+    data: TaxonomyExampleOut;
+}>(options?: {
+    query?: Omit<UseSuspenseQueryOptions<{
+        data: TaxonomyExampleOut;
+    }, ApiError, TData>, "queryKey" | "queryFn">;
+}) {
+    return useSuspenseQuery({
+        queryKey: getTaxonomyExampleKey(),
+        queryFn: ()=>getTaxonomyExample(),
+        ...options?.query
+    });
+}
 export interface GetCatalogSchemaWarningParams {
     catalog_name: string;
 }
@@ -9012,6 +11468,69 @@ export function useSetUserPreference(options?: {
 }) {
     return useMutation({
         mutationFn: (vars)=>setUserPreference(vars.params, vars.data),
+        ...options?.mutation
+    });
+}
+export interface DeleteUserPreferenceParams {
+    key: string;
+    "X-Forwarded-Host"?: string | null;
+    "X-Forwarded-Preferred-Username"?: string | null;
+    "X-Forwarded-User"?: string | null;
+    "X-Forwarded-Email"?: string | null;
+    "X-Request-Id"?: string | null;
+    "X-Forwarded-Access-Token"?: string | null;
+}
+export const deleteUserPreference = async (params: DeleteUserPreferenceParams, options?: RequestInit): Promise<{
+    data: UserPreferenceDeleteOut;
+}> =>{
+    const res = await fetch(`/api/user/preferences/${params.key}`, {
+        ...options,
+        method: "DELETE",
+        headers: {
+            ...(params?.["X-Forwarded-Host"] != null && {
+                "X-Forwarded-Host": params["X-Forwarded-Host"]
+            }),
+            ...(params?.["X-Forwarded-Preferred-Username"] != null && {
+                "X-Forwarded-Preferred-Username": params["X-Forwarded-Preferred-Username"]
+            }),
+            ...(params?.["X-Forwarded-User"] != null && {
+                "X-Forwarded-User": params["X-Forwarded-User"]
+            }),
+            ...(params?.["X-Forwarded-Email"] != null && {
+                "X-Forwarded-Email": params["X-Forwarded-Email"]
+            }),
+            ...(params?.["X-Request-Id"] != null && {
+                "X-Request-Id": params["X-Request-Id"]
+            }),
+            ...(params?.["X-Forwarded-Access-Token"] != null && {
+                "X-Forwarded-Access-Token": params["X-Forwarded-Access-Token"]
+            }),
+            ...options?.headers
+        }
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(body);
+        } catch  {
+            parsed = body;
+        }
+        throw new ApiError(res.status, res.statusText, parsed);
+    }
+    return {
+        data: await res.json()
+    };
+};
+export function useDeleteUserPreference(options?: {
+    mutation?: UseMutationOptions<{
+        data: UserPreferenceDeleteOut;
+    }, ApiError, {
+        params: DeleteUserPreferenceParams;
+    }>;
+}) {
+    return useMutation({
+        mutationFn: (vars)=>deleteUserPreference(vars.params),
         ...options?.mutation
     });
 }

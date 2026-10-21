@@ -68,6 +68,61 @@ export function parse409<T extends { error: string }>(
   return candidate as unknown as T;
 }
 
+/**
+ * The backend's `admin_help` error detail: an assessment failure only an
+ * administrator can fix. `message` is the error text; the links and the
+ * reader are present only when the backend knows them, and `not_ready` lists
+ * the setup reasons on a launch refused because the feature isn't ready.
+ */
+export interface AdminHelp {
+  message: string;
+  job_url?: string;
+  run_url?: string;
+  runs_path?: string;
+  job_reader?: string;
+  not_ready?: string[];
+}
+
+const optionalText = (v: unknown): string | undefined =>
+  typeof v === "string" && v.trim() ? v : undefined;
+
+/**
+ * Parse an `ApiError` into its `admin_help` detail, or `null` when it isn't
+ * one. Keys on the `error === "admin_help"` discriminator (any status: the
+ * backend sends it on 4xx and 5xx alike) through the shared `unwrapEnvelope`.
+ * An empty `message` falls back to the HTTP-level message: `apiErrorMessage`
+ * would return the `error` discriminator itself.
+ */
+export function parseAdminHelp(err: unknown): AdminHelp | null {
+  if (!(err instanceof ApiError)) return null;
+  const envelope = unwrapEnvelope(err);
+  if (!envelope || envelope.error !== "admin_help") return null;
+  const notReady = Array.isArray(envelope.not_ready)
+    ? envelope.not_ready.filter((m): m is string => typeof m === "string" && m.trim() !== "")
+    : [];
+  return {
+    message: optionalText(envelope.message) ?? err.message,
+    job_url: optionalText(envelope.job_url),
+    run_url: optionalText(envelope.run_url),
+    runs_path: optionalText(envelope.runs_path),
+    job_reader: optionalText(envelope.job_reader),
+    ...(notReady.length ? { not_ready: notReady } : {}),
+  };
+}
+
+/**
+ * A plain 409 `{message}` with no `error` discriminator (e.g. two requests
+ * changed the same next vibe at once): the message to show inline with a
+ * Try again, or `null` for anything else. `parseAdminHelp` returns null for
+ * these, so they never render as an admin-help block.
+ */
+export function parsePlainConflict(err: unknown): string | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const envelope = unwrapEnvelope(err);
+  if (!envelope || "error" in envelope) return null;
+  return optionalText(envelope.message) ?? null;
+}
+
 /** One missing configuration entry from a `config_missing` 422 payload. */
 export interface ConfigMissingItem {
   key: string;

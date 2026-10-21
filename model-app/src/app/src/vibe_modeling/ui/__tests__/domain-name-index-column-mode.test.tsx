@@ -49,6 +49,7 @@ vi.mock("@/lib/api", async () => {
     useGetModelSummarySuspense: () => ({
       data: { name: "Test Model", version: 1, domains: [] },
     }),
+    useListVersionsSuspense: () => ({ data: [] }),
     useGetExplorerVersionsSuspense: () => ({
       data: [{ id: "v-1", version: 1, scope: "ecm" }],
     }),

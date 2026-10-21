@@ -1,0 +1,36 @@
+{
+ "genie": {
+  "tag": "v0.1.0",
+  "sha256": {
+   "x86_64": "b26ea0da3e5c4255080467a11792c0914cb032e025411a51bc0dbbf1f72fdd01",
+   "aarch64": "394f03d14a51dde340e2c936ac45b7520380f52a6b8f170bcc010fc0dfbe2f82"
+  }
+ },
+ "databricks_cli": {
+  "tag": "v1.21.0",
+  "sha256": {
+   "amd64": "5599f6a4c01535142cdb1aa16527ec68e6aa849bd7ce72581ec4ed491e9d16b7",
+   "arm64": "27440b096de110978ea8621ed936692bf88e6912ddadea810f7cac78850ceb02"
+  }
+ },
+ "genie_model": "gpt-5.6-sol",
+ "genie_model_service": "system.ai.gpt-5-6-sol",
+ "skills_repo": "databricks-industry-solutions/lakehouse-industry-data-models",
+ "skills_subdir": "model-genie-skills/skills",
+ "skills_ref": "dev:fix/assessment-grading-calibration@6e08f54",
+ "skills_version": "0.4.0",
+ "release_skills_ref": "4c709f704d4e4bc977aeb4379409fb709f2ab7e4",
+ "release_skills_version": "0.4.0",
+ "staged_skills": [
+  "domain-model-assessment",
+  "autonomous-validation"
+ ],
+ "handoff_skills": [
+  "domain-model-assessment",
+  "autonomous-validation",
+  "etl-development-framework",
+  "domain-model-validation",
+  "domain-documentation",
+  "domain-sync"
+ ]
+}

@@ -9,6 +9,11 @@
 #                                             script exports)
 #   2. python install/provision_lakebase.py  (Lakebase project, endpoint, DB, roles)
 #   3. python install/grant_catalog.py       (UC privileges for app SP — best-effort)
+#      python install/check_model_service.py (only with --enable-taxonomy-builder:
+#                                             read-only check that the app SP can
+#                                             use the model service; never grants.
+#                                             With --enable-assessment and a reader:
+#                                             warn-only check of the reader SP)
 #   4. databricks apps start                 (bring compute up)
 #   5. databricks apps deploy                (push the built source to the running app)
 #
@@ -33,7 +38,6 @@
 #     (provision_lakebase.py imports both; grant_catalog.py imports the SDK):
 #       python -m pip install 'databricks-sdk>=0.61' 'psycopg[binary]'
 #       uv pip install 'databricks-sdk>=0.61' 'psycopg[binary]'
-#       pyenv activate vibe-modeling  # if using the project pyenv
 #     install.sh fail-fasts at step 0 if either is missing.
 #
 # Usage:
@@ -41,7 +45,9 @@
 #       [--app-name vibe-modeling] \
 #       [--project vibe-modeling] \
 #       [--catalog vibe_modeling] \
-#       [--warehouse-id <sql-warehouse-id>]
+#       [--warehouse-id <sql-warehouse-id>] \
+#       [--enable-taxonomy-builder [--taxonomy-model-service <catalog.schema.service>]] \
+#       [--enable-assessment [--assess-reader-sp <application_id>]]
 
 set -euo pipefail
 
@@ -50,6 +56,11 @@ PROFILE=""
 PROJECT="vibe-modeling"
 CATALOG="vibe_modeling"
 WAREHOUSE_ID=""
+TAXONOMY_ENABLED="false"
+TAXONOMY_MODEL_SERVICE=""
+DEFAULT_TAXONOMY_MODEL_SERVICE="system.ai.claude-sonnet-5-5"
+ASSESS_ENABLED="false"
+ASSESS_READER_SP=""
 
 usage() {
   cat <<EOF
@@ -62,6 +73,17 @@ Options:
   --catalog <name>        Unity Catalog name + Postgres database name (default: $CATALOG)
   --warehouse-id <id>     SQL warehouse ID for Delta polling (optional;
                           omit to configure via the first-run UI)
+  --enable-taxonomy-builder
+                          Install the optional Domain Taxonomy Builder (default: off)
+  --taxonomy-model-service <catalog.schema.service>
+                          UC model service the builder drafts with (requires
+                          --enable-taxonomy-builder; default: $DEFAULT_TAXONOMY_MODEL_SERVICE)
+  --enable-assessment     Install the optional bronze assessment skill (default: off)
+  --assess-reader-sp <application_id>
+                          Reader service principal the assessment job runs as:
+                          its application id (a UUID, not the display name;
+                          requires --enable-assessment). Without it the
+                          feature stays disabled until set in Settings -> Assessment.
   -h | --help             Show this message
 EOF
 }
@@ -73,18 +95,41 @@ while [[ $# -gt 0 ]]; do
     --project) PROJECT="$2"; shift 2 ;;
     --catalog) CATALOG="$2"; shift 2 ;;
     --warehouse-id) WAREHOUSE_ID="$2"; shift 2 ;;
+    --enable-taxonomy-builder) TAXONOMY_ENABLED="true"; shift ;;
+    --taxonomy-model-service) TAXONOMY_MODEL_SERVICE="${2:-}"; shift 2 ;;
+    --enable-assessment) ASSESS_ENABLED="true"; shift ;;
+    --assess-reader-sp) ASSESS_READER_SP="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "ERROR: unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
+if [[ -n "$TAXONOMY_MODEL_SERVICE" && "$TAXONOMY_ENABLED" != "true" ]]; then
+  echo "ERROR: --taxonomy-model-service requires --enable-taxonomy-builder" >&2
+  usage >&2
+  exit 2
+fi
+if [[ "$TAXONOMY_ENABLED" == "true" && -z "$TAXONOMY_MODEL_SERVICE" ]]; then
+  TAXONOMY_MODEL_SERVICE="$DEFAULT_TAXONOMY_MODEL_SERVICE"
+fi
+if [[ -n "$ASSESS_READER_SP" && "$ASSESS_ENABLED" != "true" ]]; then
+  echo "ERROR: --assess-reader-sp requires --enable-assessment" >&2
+  usage >&2
+  exit 2
+fi
+UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+if [[ -n "$ASSESS_READER_SP" && ! "$ASSESS_READER_SP" =~ $UUID_RE ]]; then
+  echo "ERROR: --assess-reader-sp must be a service principal application id (UUID), got '$ASSESS_READER_SP'" >&2
+  exit 2
+fi
+
 PROFILE_FLAGS=()
 [[ -n "$PROFILE" ]] && PROFILE_FLAGS=(--profile "$PROFILE")
 
-# CRITICAL tools. install.sh itself needs databricks/python/jq; the bundle
+# CRITICAL tools. install.sh itself needs databricks/python/jq/curl; the bundle
 # build hook (install/build_and_render.sh -> `apx build`) needs apx/uv/bun.
 # A missing one fails the deploy, so abort up front rather than mid-install.
-for cmd in databricks python jq apx uv bun; do
+for cmd in databricks python jq curl apx uv bun; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "ERROR: required tool '$cmd' not found in PATH" >&2; exit 2; }
 done
 
@@ -99,7 +144,6 @@ ERROR: required Python package providing '$mod' is not installed in the active e
 Install the install-time deps (one of the following, per your env manager):
   python -m pip install 'databricks-sdk>=0.61' 'psycopg[binary]'
   uv pip install 'databricks-sdk>=0.61' 'psycopg[binary]'
-  pyenv activate vibe-modeling   # if using the project's pyenv
 
 Then re-run install.sh.
 EOF
@@ -119,6 +163,10 @@ PY_VER=$(python -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])' 2>/dev/nu
 
 cd "$(dirname "$0")/.."
 
+if [[ "$TAXONOMY_ENABLED" == "true" ]]; then
+  python install/check_model_service.py --validate-only --model-service "$TAXONOMY_MODEL_SERVICE" || exit 2
+fi
+
 echo "==> [0/5] Verifying credentials (profile: ${PROFILE:-<ambient>})"
 ME=$(databricks current-user me ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} --output json | jq -r .userName)
 echo "    authenticated as: $ME"
@@ -135,11 +183,14 @@ export VIBE_MODELING_LAKEBASE_PROJECT="$PROJECT"
 export VIBE_MODELING_DATABASE_NAME="$CATALOG"
 export VIBE_MODELING_DEPLOYMENT_CATALOG="$CATALOG"
 export VIBE_MODELING_WAREHOUSE_ID="$WAREHOUSE_ID"
-
-# A first-time install deploys to a new workspace's production branch on
-# purpose — that is an allowed production operation (not a dev redeploy).
-# Opt in to the production guard explicitly.
-export ALLOW_PRODUCTION_DEPLOY=1
+# Domain Taxonomy Builder: the flag turns the feature on; the model service
+# seeds AgentConfig.taxonomy_model_service while that column is empty.
+export VIBE_MODELING_TAXONOMY_BUILDER_ENABLED="$TAXONOMY_ENABLED"
+export VIBE_MODELING_TAXONOMY_MODEL_SERVICE="$TAXONOMY_MODEL_SERVICE"
+# Bronze assessment skill: the flag turns the feature on; the reader SP seeds
+# AssessConfig.reader_application_id while that column is empty.
+export VIBE_MODELING_ASSESSMENT_ENABLED="$ASSESS_ENABLED"
+export VIBE_MODELING_ASSESS_READER_SP="$ASSESS_READER_SP"
 
 echo
 echo "==> [0/5] in-flight runs guard"
@@ -148,9 +199,9 @@ echo "==> [0/5] in-flight runs guard"
 # refuse to proceed: an atomic-replace App container swap can't hand
 # off in-memory pollers cleanly, so the next deploy would silently
 # orphan those runs until the new container's lifespan re-attaches.
-# Delegates to scripts/_internal/in_flight_guard.sh (shared with redeploy.sh).
+# Delegates to install/in_flight_guard.sh.
 APP="$APP_NAME" PROFILE="$PROFILE" FORCE="${FORCE:-0}" \
-  bash "$(pwd)/scripts/_internal/in_flight_guard.sh"
+  bash install/in_flight_guard.sh
 
 echo
 echo "==> [1/5] databricks bundle deploy"
@@ -159,9 +210,9 @@ echo "    app_name=$APP_NAME, project=$PROJECT, UC catalog=$CATALOG, Lakebase DB
 # Clear stale local bundle state that pins a different workspace (a fresh-
 # workspace install from a machine that deployed this bundle elsewhere fails
 # with "workspace_id mismatch ... in provider_config"). Delegates to
-# scripts/_internal/clear_stale_bundle_state.sh (shared with redeploy.sh).
+# install/clear_stale_bundle_state.sh.
 PROFILE="$PROFILE" TARGET=dev REPO_ROOT="$(pwd)" \
-  bash "$(pwd)/scripts/_internal/clear_stale_bundle_state.sh"
+  bash install/clear_stale_bundle_state.sh
 
 # Pre-build src/app/.build before bundle deploy.
 # databricks CLI v1.10.0 resolves sync.include paths before running the
@@ -195,6 +246,33 @@ python install/grant_catalog.py \
   ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} \
   --catalog "$CATALOG" \
   --app-sp  "$APP_SP"
+
+if [[ "$TAXONOMY_ENABLED" == "true" ]]; then
+  echo
+  echo "==> [3/5] python install/check_model_service.py (Domain Taxonomy Builder)"
+  python install/check_model_service.py \
+    ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} \
+    --model-service "$TAXONOMY_MODEL_SERVICE" \
+    --app-sp "$APP_SP"
+fi
+
+if [[ "$ASSESS_ENABLED" == "true" ]]; then
+  echo
+  if [[ -n "$ASSESS_READER_SP" ]]; then
+    echo "==> [3/5] python install/check_model_service.py (bronze assessment reader, warn-only)"
+    # The model service the assessment job's Genie Code CLI calls as the reader (pinned with the CLIs).
+    ASSESS_MODEL_SERVICE=$(jq -r .genie_model_service src/app/vendored/assessment/VERSIONS.json)
+    python install/check_model_service.py \
+      ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} \
+      --model-service "$ASSESS_MODEL_SERVICE" \
+      --principal "$ASSESS_READER_SP" \
+      --app-sp "$APP_SP" \
+      || echo "    [warn] the reader check could not run; see INSTALL.md 'Enabling the in-app bronze assessment skill'."
+  else
+    echo "==> [3/5] bronze assessment: no --assess-reader-sp; the feature stays disabled until an"
+    echo "    admin sets the reader in Settings -> Assessment."
+  fi
+fi
 
 echo
 echo "==> [4/5] Starting app compute (if stopped)"
@@ -263,7 +341,7 @@ if [[ -n "$VTOKEN" && "$VTOKEN" != "null" ]]; then
     echo "    [ok]   catalog '$CATALOG' exists in Unity Catalog"
   else
     echo "    [warn] catalog '$CATALOG' does not exist yet — model-producing runs will fail until it"
-    echo "           is provisioned (see [3/5] output and INSTALL.md 'App SP catalog privileges')."
+    echo "           is provisioned (see [3/5] output and the Default Storage note under INSTALL.md 'Cloud and workspace')."
   fi
 else
   echo "    [warn] could not mint a token for post-install checks; verify manually (INSTALL.md 'Verify the install')."
@@ -278,6 +356,8 @@ Install complete.
   UC catalog:        $CATALOG
   Database name:     $CATALOG
   Warehouse ID:      ${WAREHOUSE_ID:-<unset — configure via first-run UI>}
+  Taxonomy builder:  $TAXONOMY_ENABLED${TAXONOMY_MODEL_SERVICE:+ (model service: $TAXONOMY_MODEL_SERVICE)}
+  Assessment:        $ASSESS_ENABLED${ASSESS_READER_SP:+ (reader SP: $ASSESS_READER_SP)}
   App SP:            $APP_SP
 
 Next: open the app URL. The app installs the bundled agent notebook on its

@@ -9,6 +9,9 @@ import {
   DEFAULT_FILTERS,
   filtersToQueryParams,
   applyFilters,
+  collectDomainOptions,
+  inputDomain,
+  MODEL_WIDE_DOMAIN,
 } from "@/components/vibe-inputs/filters-bar";
 import type { VibeInputOut } from "@/lib/api";
 
@@ -56,6 +59,7 @@ describe("filtersToQueryParams", () => {
         state: "all",
         priority: "high",
         selected: "all",
+        domain: "all",
       }),
     ).toEqual({ q: "rename", origin: "agent_next_vibe", priority: "high" });
   });
@@ -90,6 +94,70 @@ describe("applyFilters — deprecated exclusivity (U-04)", () => {
   });
 });
 
+describe("applyFilters - domain facet", () => {
+  const byName = makeInput({
+    id: "n",
+    anchor: { level: "element", domain_name: "Sales", path: ["Domain: Sales"] },
+  } as Partial<VibeInputOut>);
+  const byPath = makeInput({
+    id: "p",
+    anchor: { level: "element", path: ["Domain: Finance", "Product: Ledger"] },
+  } as Partial<VibeInputOut>);
+  const pathBeatsName = makeInput({
+    id: "pb",
+    anchor: { level: "element", domain_name: "Stale", path: ["Domain: Ops"] },
+  } as Partial<VibeInputOut>);
+  const nameOnly = makeInput({
+    id: "no",
+    anchor: { level: "element", domain_name: "Legal", path: ["Product: Contracts"] },
+  } as Partial<VibeInputOut>);
+  const modelWide = makeInput({
+    id: "m",
+    anchor: { level: "model_wide", path: [] },
+  } as Partial<VibeInputOut>);
+  const modelWideWithName = makeInput({
+    id: "mn",
+    anchor: { level: "model_wide", domain_name: "Sales", path: [] },
+  } as Partial<VibeInputOut>);
+  const emptyPath = makeInput({
+    id: "e",
+    anchor: { level: "element", domain_name: "Sales", path: [] },
+  } as Partial<VibeInputOut>);
+  const noAnchor = makeInput({ id: "x", anchor: null } as Partial<VibeInputOut>);
+  const all = [byName, byPath, pathBeatsName, nameOnly, modelWide, modelWideWithName, emptyPath, noAnchor];
+  const ids = (f: string) =>
+    applyFilters(all, { ...DEFAULT_FILTERS, domain: f }, new Set()).map((i) => i.id);
+
+  it("matches the 'Domain: X' path label", () => {
+    expect(ids("Sales")).toEqual(["n"]);
+    expect(ids("Finance")).toEqual(["p"]);
+  });
+  it("prefers the path label over anchor.domain_name", () => {
+    expect(ids("Ops")).toEqual(["pb"]);
+    expect(ids("Stale")).toEqual([]);
+  });
+  it("falls back to anchor.domain_name only when the path has no Domain label", () => {
+    expect(ids("Legal")).toEqual(["no"]);
+  });
+  it("model-wide covers model_wide level and empty path, even with domain_name", () => {
+    expect(ids(MODEL_WIDE_DOMAIN)).toEqual(["m", "mn", "e"]);
+  });
+  it("a null anchor matches only 'all'", () => {
+    expect(ids("all")).toContain("x");
+    expect(ids(MODEL_WIDE_DOMAIN)).not.toContain("x");
+    expect(ids("Sales")).not.toContain("x");
+  });
+  it("is not sent as a server query param", () => {
+    expect(filtersToQueryParams({ ...DEFAULT_FILTERS, domain: "Sales" })).toEqual({});
+  });
+  it("classifies inputs and collects unique sorted domain names", () => {
+    expect(inputDomain(noAnchor)).toEqual({ kind: "none" });
+    expect(inputDomain(modelWideWithName)).toEqual({ kind: "model_wide" });
+    expect(inputDomain(byPath)).toEqual({ kind: "domain", name: "Finance" });
+    expect(collectDomainOptions(all)).toEqual(["Finance", "Legal", "Ops", "Sales"]);
+  });
+});
+
 describe("FiltersBar component", () => {
   it("search input updates q", () => {
     const onChange = vi.fn();
@@ -117,5 +185,68 @@ describe("FiltersBar component", () => {
     fireEvent.click(screen.getByLabelText("Filter by selection"));
     fireEvent.click(screen.getByRole("option", { name: "Selected" }));
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, selected: "selected" });
+  });
+
+  it("renders the domain select only when domains are given", () => {
+    const { rerender } = render(
+      <FiltersBar filters={DEFAULT_FILTERS} onChange={vi.fn()} shown={3} total={9} />,
+    );
+    expect(screen.queryByLabelText("Filter by domain")).not.toBeInTheDocument();
+    rerender(
+      <FiltersBar
+        filters={DEFAULT_FILTERS}
+        onChange={vi.fn()}
+        shown={3}
+        total={9}
+        domains={[]}
+      />,
+    );
+    expect(screen.queryByLabelText("Filter by domain")).not.toBeInTheDocument();
+    rerender(
+      <FiltersBar
+        filters={DEFAULT_FILTERS}
+        onChange={vi.fn()}
+        shown={3}
+        total={9}
+        domains={["Sales"]}
+      />,
+    );
+    expect(screen.getByLabelText("Filter by domain")).toBeInTheDocument();
+  });
+
+  it("domain select offers All, Model-wide and each domain, and updates the facet", () => {
+    const onChange = vi.fn();
+    render(
+      <FiltersBar
+        filters={DEFAULT_FILTERS}
+        onChange={onChange}
+        shown={3}
+        total={9}
+        domains={["Finance", "Sales"]}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Filter by domain"));
+    expect(screen.getByRole("option", { name: "All domains" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Model-wide" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Finance" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Sales" }));
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, domain: "Sales" });
+  });
+
+  it("keeps the domain select when a stale domain is active, so it can be cleared", () => {
+    const onChange = vi.fn();
+    const stale = { ...DEFAULT_FILTERS, domain: "Gone" };
+    const { rerender } = render(
+      <FiltersBar filters={stale} onChange={onChange} shown={0} total={9} />,
+    );
+    const trigger = screen.getByLabelText("Filter by domain");
+    expect(trigger).toHaveTextContent("Gone");
+    rerender(
+      <FiltersBar filters={stale} onChange={onChange} shown={0} total={9} domains={["Sales"]} />,
+    );
+    expect(screen.getByLabelText("Filter by domain")).toHaveTextContent("Gone");
+    fireEvent.click(screen.getByLabelText("Filter by domain"));
+    fireEvent.click(screen.getByRole("option", { name: "All domains" }));
+    expect(onChange).toHaveBeenCalledWith({ ...stale, domain: "all" });
   });
 });

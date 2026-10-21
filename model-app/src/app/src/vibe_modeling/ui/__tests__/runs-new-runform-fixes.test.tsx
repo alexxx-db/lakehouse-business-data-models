@@ -60,6 +60,8 @@ const anchored = (id: string, selected: boolean) => ({
 
 // Mutable per-test fixtures — the api mock reads these live.
 let VERSIONS: unknown[] = [MVM_VERSION, ECM_VERSION];
+let VERSIONS_BY_BUSINESS: Record<string, unknown[]> = {};
+let lastRouter: { navigate: (opts: { to: string }) => Promise<unknown> } | null = null;
 let INPUTS_BY_VERSION: Record<string, unknown[]> = {};
 
 const createRunMock = vi.fn(async () => ({ data: { id: "run-new" } }));
@@ -72,7 +74,9 @@ vi.mock("@/lib/api", async () => {
     useGetBusinessSuspense: () => ({
       data: { id: "biz-1", name: "Acme Corp", description: "Retail blurb." },
     }),
-    useListVersionsSuspense: () => ({ data: VERSIONS }),
+    useListVersionsSuspense: (opts: any) => ({
+      data: VERSIONS_BY_BUSINESS[opts?.params?.business_id as string] ?? VERSIONS,
+    }),
     useListVibeInputs: (opts: any) => {
       const vid = opts?.params?.version_id as string | undefined;
       const rows = (vid && INPUTS_BY_VERSION[vid]) || [];
@@ -137,6 +141,7 @@ async function renderRunsNew(searchString: string) {
     }),
     defaultPendingMs: 0,
   });
+  lastRouter = router as unknown as typeof lastRouter;
   const qc = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: 30_000 },
@@ -165,6 +170,8 @@ async function pickOperationType(label: RegExp) {
 
 beforeEach(() => {
   VERSIONS = [MVM_VERSION, ECM_VERSION];
+  VERSIONS_BY_BUSINESS = {};
+  lastRouter = null;
   INPUTS_BY_VERSION = {};
   createRunMock.mockClear();
   validateRunMock.mockClear();
@@ -263,6 +270,115 @@ describe("U-05 — File-Path business context has a Volume picker", () => {
         'input[placeholder*="business_context.json"]',
       ) as HTMLInputElement | null;
       expect(input?.value).toBe("/Volumes/cat/sch/vibes/ctx.json");
+    });
+  });
+});
+
+describe("New Base Model is only allowed for a business with no model versions", () => {
+  const HINT =
+    "New Base Model needs a business with no model versions. Create a new business to start a fresh base model.";
+
+  async function openOperationType() {
+    const trigger = screen.getByRole("combobox", { name: "Operation Type" });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    return trigger;
+  }
+
+  it.each(["new base model", "new-base-model"])(
+    "with versions and operationType=%s: option disabled, hint visible, Vibe Modeling selected",
+    async (opType) => {
+      await renderRunsNew(
+        `?businessId=biz-1&operationType=${encodeURIComponent(opType)}`,
+      );
+
+      const trigger = await screen.findByRole("combobox", { name: "Operation Type" });
+      expect(trigger).toHaveTextContent("Vibe Modeling");
+      const hint = screen.getByText(HINT);
+      expect(hint).toBeInTheDocument();
+      expect(hint.id).not.toBe("");
+      expect(trigger).toHaveAttribute("aria-describedby", hint.id);
+
+      await openOperationType();
+      const option = await screen.findByRole("option", { name: /^New Base Model$/i });
+      expect(option).toHaveAttribute("aria-disabled", "true");
+      expect(option).toHaveAttribute("data-disabled");
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+    },
+  );
+
+  it("with versions and no operationType: option disabled, Vibe Modeling selected", async () => {
+    await renderRunsNew("?businessId=biz-1");
+    const trigger = await screen.findByRole("combobox", { name: "Operation Type" });
+    expect(trigger).toHaveTextContent("Vibe Modeling");
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+  });
+
+  it.each(["new base model", "new-base-model"])(
+    "with no versions and operationType=%s: option enabled and selected, no hint",
+    async (opType) => {
+      VERSIONS = [];
+      await renderRunsNew(
+        `?businessId=biz-1&operationType=${encodeURIComponent(opType)}`,
+      );
+
+      const trigger = await screen.findByRole("combobox", { name: "Operation Type" });
+      expect(trigger).toHaveTextContent("New Base Model");
+      expect(screen.queryByText(HINT)).toBeNull();
+      expect(trigger).not.toHaveAttribute("aria-describedby");
+
+      await openOperationType();
+      const option = await screen.findByRole("option", { name: /^New Base Model$/i });
+      expect(option).not.toHaveAttribute("aria-disabled", "true");
+      expect(option).not.toHaveAttribute("data-disabled");
+    },
+  );
+  describe("switching business on the same mounted route", () => {
+    async function navigateTo(businessId: string) {
+      await act(async () => {
+        await lastRouter!.navigate({ to: `/businesses/${businessId}/runs/new` });
+      });
+    }
+
+    it("no versions -> versions: re-seeds to Vibe Modeling, option disabled, hint visible", async () => {
+      VERSIONS_BY_BUSINESS = { "biz-1": [], "biz-full": [MVM_VERSION, ECM_VERSION] };
+      await renderRunsNew("?businessId=biz-1");
+      const trigger = await screen.findByRole("combobox", { name: "Operation Type" });
+      await waitFor(() => expect(trigger).toHaveTextContent("New Base Model"));
+      expect(screen.queryByText(HINT)).toBeNull();
+
+      await navigateTo("biz-full");
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox", { name: "Operation Type" })).toHaveTextContent(
+          "Vibe Modeling",
+        );
+      });
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+      await openOperationType();
+      const option = await screen.findByRole("option", { name: /^New Base Model$/i });
+      expect(option).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("versions -> no versions: re-seeds to New Base Model, option enabled, no hint", async () => {
+      VERSIONS_BY_BUSINESS = { "biz-1": [MVM_VERSION, ECM_VERSION], "biz-empty": [] };
+      await renderRunsNew("?businessId=biz-1");
+      const trigger = await screen.findByRole("combobox", { name: "Operation Type" });
+      await waitFor(() => expect(trigger).toHaveTextContent("Vibe Modeling"));
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+
+      await navigateTo("biz-empty");
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox", { name: "Operation Type" })).toHaveTextContent(
+          "New Base Model",
+        );
+      });
+      expect(screen.queryByText(HINT)).toBeNull();
+      await openOperationType();
+      const option = await screen.findByRole("option", { name: /^New Base Model$/i });
+      expect(option).not.toHaveAttribute("aria-disabled", "true");
     });
   });
 });

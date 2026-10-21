@@ -6,7 +6,7 @@ Imports bypass the agent entirely, so without this writer an imported
 model can never be the input to a subsequent vibe-iterate run.
 
 This module produces INSERT rows matching the agent's column shape
-(verified against ``vibe_modeling_test._metamodel.*`` on the test workspace
+(verified against ``vibe_modeling_test._metamodel.*`` on a test workspace
 2026-05-11). It does not DELETE / UPDATE / TRUNCATE — every call only
 appends new rows. Re-importing the same scope/version would produce
 duplicates; callers are expected to bump the version per import or

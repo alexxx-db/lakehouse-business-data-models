@@ -1,0 +1,16 @@
+[
+  ["Customer & Premise", "customer_premise"],
+  ["Meter-to-Cash", "meter_to_cash"],
+  ["Premise & Service Point", "premise_service_point"],
+  ["DER Asset", "der_asset"],
+  ["NERC CIP Control", "nerc_cip_control"],
+  ["Low-Income Assistance", "low_income_assistance"],
+  ["  Work   & Asset  Management ", "work_asset_management"],
+  ["Énergie Réseau", "energie_reseau"],
+  ["&&&", ""],
+  ["日本", ""],
+  ["2027 Rate Case", "2027_rate_case"],
+  ["Straße", "strae"],
+  ["Smørrebrød", "smrrebrd"],
+  ["Acme™ Pumps", "acmetm_pumps"]
+]

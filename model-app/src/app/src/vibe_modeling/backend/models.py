@@ -2,11 +2,25 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .. import __version__
+
+# Business.name flows into Delta SQL WHERE/UPDATE clauses via f-strings in
+# progress_tracker and model_sync (properly escaped at the call site, but
+# defence-in-depth: reject names with characters that can't legitimately
+# appear in a business name). Pattern: starts with alphanumeric, continues
+# with alphanumeric / space / underscore / hyphen / ampersand / dot / paren
+# / comma / apostrophe for natural-language names; 1-128 chars. Shared by
+# BusinessIn.name and the taxonomy wizard's intake so a bad name fails at
+# Step 1, not at Create.
+BUSINESS_NAME_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9 _\-&.,'()]{0,127}$"
+
+# The agent's ``org_divisions`` widget presets (dropdown values, verbatim).
+OrgDivisions = Literal["Operations", "Operations and Business", "Operations, Business and Corporate"]
+ORG_DIVISIONS_PRESETS: tuple[str, ...] = get_args(OrgDivisions)
 
 
 def validate_business_description(value: str) -> str:
@@ -404,17 +418,7 @@ class SourceAuthConfigOut(BaseModel):
 # --- Business ---
 
 class BusinessIn(BaseModel):
-    # Business.name flows into Delta SQL WHERE/UPDATE clauses via f-strings in
-    # progress_tracker and model_sync (properly escaped at the call site, but
-    # defence-in-depth: reject names with characters that can't legitimately
-    # appear in a business name). Pattern: starts with alphanumeric, continues
-    # with alphanumeric / space / underscore / hyphen / ampersand / dot / paren
-    # / comma / apostrophe for natural-language names; 1-128 chars.
-    name: str = Field(
-        min_length=1,
-        max_length=128,
-        pattern=r"^[A-Za-z0-9][A-Za-z0-9 _\-&.,'()]{0,127}$",
-    )
+    name: str = Field(min_length=1, max_length=128, pattern=BUSINESS_NAME_PATTERN)
     # The ≤2k business SUMMARY → the agent's ``business_description`` widget
     # (the industry / complexity-tier seed). Capped at 2000 because that widget
     # is inline-only (hard 2048-char Databricks notebook_params limit, no Volume
@@ -431,11 +435,34 @@ class BusinessIn(BaseModel):
     # taxonomy placement. Both default to a plain business for back-compat.
     kind: BusinessKind = BusinessKind.BUSINESS
     sector_id: Optional[str] = None
+    # Proposed domain schema names for the first New Base Model run (the
+    # agent's ``business_domains`` widget value, ``"a, b, c"``) and the
+    # proposed coverage preset (``""`` = not set). Pre-fill only: run launch
+    # never reads them from the business.
+    business_domains: str = Field("", max_length=2000)
+    org_divisions: str = ""
 
     @field_validator("description")
     @classmethod
     def _description_not_whitespace(cls, v: str) -> str:
         return validate_business_description(v)
+
+    @field_validator("business_domains")
+    @classmethod
+    def _normalize_business_domains(cls, v: str) -> str:
+        names: list[str] = []
+        for raw in v.split(","):
+            name = raw.strip()
+            if name and name not in names:
+                names.append(name)
+        return ", ".join(names)
+
+    @field_validator("org_divisions")
+    @classmethod
+    def _org_divisions_preset(cls, v: str) -> str:
+        if v and v not in ORG_DIVISIONS_PRESETS:
+            raise ValueError(f"org_divisions must be empty or one of {', '.join(ORG_DIVISIONS_PRESETS)}")
+        return v
 
 class BusinessOut(BaseModel):
     id: str
@@ -453,6 +480,10 @@ class BusinessOut(BaseModel):
     # ADR D-049: the repo path an industry was downloaded from; pre-fills the
     # publish dialog's editable bundle-root. NULL for non-downloaded businesses.
     source_repo_path: Optional[str] = None
+    # Plain ``str`` (not the preset Literal) so existing rows and later preset
+    # changes never fail serialization.
+    business_domains: str = ""
+    org_divisions: str = ""
     created_at: datetime
     updated_at: datetime
 
@@ -1049,6 +1080,33 @@ class UserPreferenceOut(BaseModel):
 
 class UserPreferenceIn(BaseModel):
     value: str
+
+
+class CurrentUserEmailOut(BaseModel):
+    value: str
+
+
+class CurrentUserOut(BaseModel):
+    """Response shape for ``GET /current-user``.
+
+    ``user_name`` is the canonical identity (email first, then preferred
+    username); ``display_name`` is the preferred username when present.
+    Anonymous callers get ``user_name="anonymous"``.
+    """
+
+    user_name: str
+    display_name: str
+    emails: list[CurrentUserEmailOut]
+
+
+class UserPreferenceDeleteOut(BaseModel):
+    """Response shape for ``DELETE /user/preferences/{key}``.
+
+    ``deleted`` is False when the caller had no row for the key; the route is
+    idempotent and never 404s.
+    """
+
+    deleted: bool
 
 
 class DeleteVersionOut(BaseModel):

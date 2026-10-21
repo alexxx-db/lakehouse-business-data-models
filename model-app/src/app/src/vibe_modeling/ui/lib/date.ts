@@ -34,15 +34,21 @@ export function ensureUtcIso(value: string): string {
   return hasTz ? value : `${value}Z`;
 }
 
+/** Parse any accepted timestamp input; strings go through `ensureUtcIso` so an
+ *  offset-less backend value reads as UTC. Every formatter here parses with it. */
+function toDate(value: string | number | Date): Date {
+  return new Date(typeof value === "string" ? ensureUtcIso(value) : value);
+}
+
 export function formatDate(value: string | number | Date | null | undefined, fallback = "—"): string {
   if (!value) return fallback;
-  const d = new Date(value);
+  const d = toDate(value);
   return isNaN(d.getTime()) ? fallback : DATE_FMT.format(d);
 }
 
 export function formatDateTime(value: string | number | Date | null | undefined, fallback = "—"): string {
   if (!value) return fallback;
-  const d = new Date(value);
+  const d = toDate(value);
   return isNaN(d.getTime()) ? fallback : DATETIME_FMT.format(d);
 }
 
@@ -72,7 +78,7 @@ export function formatRelative(
   fallback = "—",
 ): string {
   if (!value) return fallback;
-  const d = new Date(value);
+  const d = toDate(value);
   if (isNaN(d.getTime())) return fallback;
   const diffMs = Date.now() - d.getTime();
   if (diffMs < 0) return "just now";
@@ -85,6 +91,25 @@ export function formatRelative(
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
   return formatDate(d);
+}
+
+/** Format a future timestamp relative to `now` ("in under a minute",
+ *  "in 5 min", "in 2 h"); a past or unparseable value gives `fallback`.
+ *  The forward counterpart of `formatRelative`. */
+export function formatUntil(
+  value: string | number | Date | null | undefined,
+  now: number = Date.now(),
+  fallback = "soon",
+): string {
+  if (!value) return fallback;
+  const t = toDate(value).getTime();
+  if (isNaN(t)) return fallback;
+  const diffMs = t - now;
+  if (diffMs <= 0) return fallback;
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "in under a minute";
+  if (minutes < 60) return `in ${minutes} min`;
+  return `in ${Math.round(minutes / 60)} h`;
 }
 
 /** Format a millisecond duration into a compact human-readable string

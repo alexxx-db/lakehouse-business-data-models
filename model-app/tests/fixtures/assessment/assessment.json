@@ -1,0 +1,24 @@
+{
+  "model_quality_score": 72,
+  "metamodel": {"location": "manufacturing_mvm_v1._metamodel", "version": "3"},
+  "entities": [
+    {"name": "order", "grade": "partial", "coverage_pct": 81.5, "primary_source": "sap_sd_mvm.vbak",
+     "row_count": 1200, "net_new_candidate": false,
+     "columns": [
+       {"target": "number", "status": "mapped", "source_table": "sap_sd_mvm.vbak", "source_column": "vbeln",
+        "transform": "", "row_count": 1200, "null_pct": 0.0, "distinct_count": 1200, "date_format": "", "fk_orphans": null, "evidence": "PK"},
+       {"target": "requested_delivery_date", "status": "mapped", "source_table": "sap_sd_mvm.vbak", "source_column": "vdatu",
+        "transform": "to_date(vdatu,'yyyyMMdd')", "row_count": 1200, "null_pct": 2.0, "distinct_count": 300, "date_format": "yyyyMMdd", "fk_orphans": null, "evidence": ""},
+       {"target": "confirmed_delivery_date", "status": "mapped", "source_table": "sap_sd_mvm.vbak", "source_column": "vdatu",
+        "transform": "", "row_count": 1200, "null_pct": 2.0, "distinct_count": 300, "date_format": "yyyyMMdd", "fk_orphans": null, "evidence": ""},
+       {"target": "sold_to_customer_id", "status": "deferred_fk", "source_table": "sap_sd_mvm.vbak", "source_column": "kunnr",
+        "transform": "", "row_count": 1200, "null_pct": 0.0, "distinct_count": 410, "date_format": "", "fk_orphans": null, "evidence": "customer domain not in scope"}
+     ]},
+    {"name": "credit_check", "grade": "blocked", "coverage_pct": 0, "primary_source": "", "row_count": null,
+     "net_new_candidate": true, "columns": []}
+  ],
+  "gaps": [{"entity": "order", "column": "incoterms", "gap_type": "NULL_SOURCE", "description": "No source", "status": "OPEN", "ask": "Ingest vbkd"}],
+  "pending_decisions": [{"gate": "2C", "question": "Add net-new entity credit_check?", "options": ["add", "defer", "reject"],
+                         "default_taken": "defer", "evidence": "vbak.cmgst populated 40%", "entity": "credit_check"}],
+  "next_vibes": [{"priority": 1, "category": "add_column", "text": "PRIORITY 1: add order.sales_organization", "confidence": 0.8}]
+}

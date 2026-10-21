@@ -4,6 +4,7 @@ import { useCurrentUserSuspense } from "@/lib/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import selector from "@/lib/selector";
+import { userInitials } from "@/lib/utils";
 
 function SidebarUserFooterSkeleton() {
   return (
@@ -18,15 +19,12 @@ function SidebarUserFooterSkeleton() {
 }
 
 function SidebarUserFooterContent() {
-  const { data } = useCurrentUserSuspense(selector());
-  const user = data as { user_name?: string; display_name?: string };
+  const { data: user } = useCurrentUserSuspense(selector());
 
-  const firstLetters = useMemo(() => {
-    const userName = user.user_name ?? "";
-    const [first = "", ...rest] = userName.split(" ");
-    const last = rest.at(-1) ?? "";
-    return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
-  }, [user.user_name]);
+  const initials = useMemo(
+    () => userInitials(user.display_name),
+    [user.display_name],
+  );
 
   return (
     <SidebarMenuButton
@@ -34,13 +32,15 @@ function SidebarUserFooterContent() {
       className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
     >
       <Avatar className="h-8 w-8 rounded-lg grayscale">
-        <AvatarFallback className="rounded-lg">{firstLetters}</AvatarFallback>
+        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
       </Avatar>
       <div className="grid flex-1 text-left text-sm leading-tight">
         <span className="truncate font-medium">{user.display_name}</span>
-        <span className="text-muted-foreground truncate text-xs">
-          {user.user_name}
-        </span>
+        {user.user_name !== user.display_name && (
+          <span className="text-muted-foreground truncate text-xs">
+            {user.user_name}
+          </span>
+        )}
       </div>
     </SidebarMenuButton>
   );

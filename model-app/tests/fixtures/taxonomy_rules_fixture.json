@@ -1,0 +1,2157 @@
+[
+ {
+  "label": "clean derived one-word schema",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Field Service",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": []
+ },
+ {
+  "label": "underscore schema override is an error",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Field Service",
+    "schema_name": "field_service",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-002",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Field Service': schema name 'field_service' must be one lowercase word - letters and digits only, no underscores, starting with a letter (DOM-RUL-002)."
+   }
+  ]
+ },
+ {
+  "label": "schema over 20 chars",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Long One",
+    "schema_name": "averyveryverylongschemaname",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-002",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Long One': schema name 'averyveryverylongschemaname' is 27 characters - keep it to 20 or fewer (DOM-RUL-002)."
+   }
+  ]
+ },
+ {
+  "label": "tier-1 forbidden name",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Analytics",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-006",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Analytics': 'analytics' is a catch-all or technical name, not a business function - rename it (DOM-RUL-006)."
+   }
+  ]
+ },
+ {
+  "label": "duplicate schema",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Customer",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Account Care",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Contact History",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-016",
+    "domains": [
+     0,
+     3
+    ],
+    "message": "Domains 'Customer' and 'Customer' both map to schema 'customer' (DOM-RUL-016)."
+   }
+  ]
+ },
+ {
+  "label": "plural domain warns",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Customers",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-004",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Customers': 'customers' looks plural - use the singular form, e.g. 'customer' not 'customers' (DOM-RUL-004)."
+   }
+  ]
+ },
+ {
+  "label": "naturally singular words are not plural",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Logistics",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Gas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Gas Mains",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Leak Survey",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Process",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Process Steps",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Quality Checks",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": []
+ },
+ {
+  "label": "tier-2 name warns",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Utilities",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Work Orders",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-007",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Utilities': 'utilities' is a vague name unless it is the real department name at this company (DOM-RUL-007)."
+   }
+  ]
+ },
+ {
+  "label": "sub-domain must be two words",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Maintenance",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Work Order Tracking",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-021",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Maintenance' in 'Asset' should be exactly two words (DOM-RUL-021)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-021",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Work Order Tracking' in 'Asset' should be exactly two words (DOM-RUL-021)."
+   }
+  ]
+ },
+ {
+  "label": "sub-domains in a domain share a word",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Asset Inspection",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Asset Repair",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-024",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domains 'Asset Inspection', 'Asset Repair' in 'Asset' share the word 'asset' - no two sub-domains in a domain may share a word (DOM-RUL-024)."
+   }
+  ]
+ },
+ {
+  "label": "sub-domain name in two domains",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Asset Care",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-040",
+    "domains": [
+     0,
+     3
+    ],
+    "message": "Sub-domain name 'Party Master' appears in more than one domain (Customer, Asset) - every sub-domain name must be unique across the model (DOM-RUL-040)."
+   }
+  ]
+ },
+ {
+  "label": "placeholder sub-domains",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Other",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Group A",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-021",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Other' in 'Asset' should be exactly two words (DOM-RUL-021)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-027",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Other' in 'Asset' is a placeholder - use a real business name (DOM-RUL-027)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-027",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Group A' in 'Asset' is a placeholder - use a real business name (DOM-RUL-027)."
+   }
+  ]
+ },
+ {
+  "label": "single sub-domain",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Asset Care",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-020",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Asset' has only one sub-domain - give it at least two (DOM-RUL-020)."
+   }
+  ]
+ },
+ {
+  "label": "fewer than three domains",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-032",
+    "domains": [],
+    "message": "A taxonomy needs at least 3 domains (DOM-RUL-032); this one has 2."
+   }
+  ]
+ },
+ {
+  "label": "plural heuristic flags ideas/areas/videos/photos",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Ideas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W0x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W1x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Areas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W2x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W3x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Videos",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W4x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W5x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Photos",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W6x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W7x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-004",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Ideas': 'ideas' looks plural - use the singular form, e.g. 'customer' not 'customers' (DOM-RUL-004)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-004",
+    "domains": [
+     4
+    ],
+    "message": "Domain 'Areas': 'areas' looks plural - use the singular form, e.g. 'customer' not 'customers' (DOM-RUL-004)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-004",
+    "domains": [
+     5
+    ],
+    "message": "Domain 'Videos': 'videos' looks plural - use the singular form, e.g. 'customer' not 'customers' (DOM-RUL-004)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-004",
+    "domains": [
+     6
+    ],
+    "message": "Domain 'Photos': 'photos' looks plural - use the singular form, e.g. 'customer' not 'customers' (DOM-RUL-004)."
+   }
+  ]
+ },
+ {
+  "label": "plural heuristic leaves singular s-words alone",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Bias",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W8x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W9x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Atlas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W10x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W11x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Canvas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W12x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W13x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Finance",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W14x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W15x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Sales",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W16x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W17x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Gas",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W18x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W19x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Business",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W20x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W21x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Status",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W22x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W23x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Campus",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Red W24x",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Blue W25x",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": []
+ },
+ {
+  "label": "hyphenated sub-domain counts as two words",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "schema_name": "",
+    "subdomains": [
+     {
+      "name": "Low-Income Assistance",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Asset Care",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": []
+ },
+ {
+  "label": "underscore-joined sub-domain is one word",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "subdomains": [
+     {
+      "name": "Work_Order",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-021",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Work_Order' in 'Asset' should be exactly two words (DOM-RUL-021)."
+   }
+  ]
+ },
+ {
+  "label": "uncategorized sub-domain is a placeholder",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "subdomains": [
+     {
+      "name": "Uncategorized",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Crew Dispatch",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-021",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Uncategorized' in 'Asset' should be exactly two words (DOM-RUL-021)."
+   },
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-027",
+    "domains": [
+     3
+    ],
+    "message": "Sub-domain 'Uncategorized' in 'Asset' is a placeholder - use a real business name (DOM-RUL-027)."
+   }
+  ]
+ },
+ {
+  "label": "audit trail and batch control are technical names",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Audit Trail",
+    "subdomains": [
+     {
+      "name": "Event Capture",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Change History",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Batch Control",
+    "subdomains": [
+     {
+      "name": "Job Schedule",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Run Tracking",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-030",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Audit Trail': 'audittrail' is a catch-all or technical name, not a business function - rename it (DOM-RUL-030)."
+   },
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-030",
+    "domains": [
+     4
+    ],
+    "message": "Domain 'Batch Control': 'batchcontrol' is a catch-all or technical name, not a business function - rename it (DOM-RUL-030)."
+   }
+  ]
+ },
+ {
+  "label": "tier-2 operations warns under DOM-RUL-037",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Operations",
+    "subdomains": [
+     {
+      "name": "Plant Running",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Shift Handover",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "warning",
+    "rule_id": "DOM-RUL-037",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Operations': 'operations' is a vague name unless it is the real department name at this company (DOM-RUL-037)."
+   }
+  ]
+ },
+ {
+  "label": "tier-1 generic name errors under DOM-RUL-007",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Platform",
+    "subdomains": [
+     {
+      "name": "Plant Running",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Shift Handover",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": [
+   {
+    "severity": "error",
+    "rule_id": "DOM-RUL-007",
+    "domains": [
+     3
+    ],
+    "message": "Domain 'Platform': 'platform' is a catch-all or technical name, not a business function - rename it (DOM-RUL-007)."
+   }
+  ]
+ },
+ {
+  "label": "shared words are whitespace-separated words",
+  "domains": [
+   {
+    "name": "Customer",
+    "subdomains": [
+     {
+      "name": "Party Master",
+      "categories": [
+       "Customer"
+      ]
+     },
+     {
+      "name": "Service Location",
+      "categories": [
+       "Premise"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Billing",
+    "subdomains": [
+     {
+      "name": "Meter Reading",
+      "categories": [
+       "Meter"
+      ]
+     },
+     {
+      "name": "Bill Production",
+      "categories": [
+       "Bill"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Grid",
+    "subdomains": [
+     {
+      "name": "Grid Assets",
+      "categories": [
+       "Feeder"
+      ]
+     },
+     {
+      "name": "Network Control",
+      "categories": [
+       "Switch"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Asset",
+    "subdomains": [
+     {
+      "name": "Low-Income Assistance",
+      "categories": [
+       "Thing"
+      ]
+     },
+     {
+      "name": "Income Support",
+      "categories": [
+       "Thing"
+      ]
+     }
+    ]
+   }
+  ],
+  "expected": []
+ }
+]

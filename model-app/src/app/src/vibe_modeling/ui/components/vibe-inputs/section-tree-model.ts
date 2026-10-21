@@ -43,6 +43,13 @@ const NAME_OF = (label: string): string => {
   return idx >= 0 ? label.slice(idx + 2) : label;
 };
 
+/** The domain name from the first "Domain: X" label of a section path, or null
+ *  when the path has no Domain segment. */
+export function domainNameFromPath(path: readonly string[]): string | null {
+  const label = path.find((l) => KIND_OF(l) === "Domain");
+  return label ? NAME_OF(label) || null : null;
+}
+
 /** Collect the element ids that correspond to a given depth of the anchor. The
  *  anchor carries the leaf ids; the path index maps to which id is the leaf at
  *  that depth. We accumulate the ancestor ids from the anchor as we descend. */

@@ -29,7 +29,8 @@ from .._relink import (
     relink_input,
 )
 from ..core import Dependencies
-from ..core.anchor_resolve import resolve_feedback_anchor
+from ..core._vibe_input_create import create_vibe_input_with_anchor
+from ..core._identity import actor_label
 from ..explorer import product_fqn
 from ..db_models import (
     Attribute,
@@ -74,10 +75,6 @@ router = APIRouter(prefix=api_prefix)
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _actor(headers) -> str:
-    return headers.user_email or headers.user_name or "anonymous"
 
 
 def _input_to_out(vi: VibeInput, anchor: VibeInputAnchorOut | None = None) -> VibeInputOut:
@@ -192,52 +189,24 @@ def create_vibe_input(
         )
 
     author = data.author or (
-        _actor(headers) if data.origin == VibeInputOrigin.USER else ""
+        actor_label(headers) if data.origin == VibeInputOrigin.USER else ""
     )
-    vi = VibeInput(
+    vi = create_vibe_input_with_anchor(
+        session=session,
         business_id=business_id,
-        origin=data.origin.value,
+        text=data.text,
         author=author,
-        text=data.text.strip(),
-        priority=data.priority.value,
+        version_id=data.version_id,
+        origin=data.origin,
+        priority=data.priority,
         confidence_score=data.confidence_score,
-    )
-    session.add(vi)
-    session.flush()
-
-    # Anchor precedence: explicit element ids (compose-surface "Add instruction")
-    # win; else resolve a name-based origin_context ("Add Feedback") against the
-    # VIEWED version; else model-wide (all-null).
-    has_explicit = any(
-        (data.domain_id, data.subdomain_id, data.product_id,
-         data.attribute_id, data.fk_link_id)
-    )
-    link_kwargs = dict(
         domain_id=data.domain_id,
-        subdomain_id=data.subdomain_id,
         product_id=data.product_id,
         attribute_id=data.attribute_id,
+        subdomain_id=data.subdomain_id,
         fk_link_id=data.fk_link_id,
-        needs_link_review=False,
+        origin_context=data.origin_context,
     )
-    if not has_explicit and data.origin_context is not None:
-        anchor = resolve_feedback_anchor(session, data.version_id, data.origin_context)
-        link_kwargs = dict(
-            domain_id=anchor.domain_id,
-            subdomain_id=anchor.subdomain_id,
-            product_id=anchor.product_id,
-            attribute_id=anchor.attribute_id,
-            fk_link_id=anchor.fk_link_id,
-            needs_link_review=anchor.needs_link_review,
-        )
-
-    link = VibeInputContextLink(
-        input_id=vi.id,
-        version_id=data.version_id,
-        is_origin=True,
-        **link_kwargs,
-    )
-    session.add(link)
     session.commit()
     session.refresh(vi)
     return _input_to_out(vi)
@@ -501,7 +470,7 @@ def delete_vibe_input(
     """Soft-delete: status=deprecated, deprecated_by=<user> (manual)."""
     vi = _get_input(session, business_id, input_id)
     vi.status = VibeInputStatus.DEPRECATED.value
-    vi.deprecated_by = _actor(headers)
+    vi.deprecated_by = actor_label(headers)
     vi.updated_at = _now()
     session.add(vi)
     session.commit()
@@ -843,7 +812,7 @@ def accept_review_link(
     """Confirm the auto-proposed anchor: clear needs_link_review, stamp reviewer."""
     lk = _get_link(session, business_id, link_id)
     lk.needs_link_review = False
-    lk.reviewed_by = _actor(headers)
+    lk.reviewed_by = actor_label(headers)
     lk.reviewed_at = _now()
     session.add(lk)
     session.commit()
@@ -874,7 +843,7 @@ def reanchor_review_link(
     lk.attribute_id = data.attribute_id
     lk.fk_link_id = data.fk_link_id
     lk.needs_link_review = False
-    lk.reviewed_by = _actor(headers)
+    lk.reviewed_by = actor_label(headers)
     lk.reviewed_at = _now()
     session.add(lk)
     session.commit()
@@ -1125,7 +1094,7 @@ def mark_product_review(
     if prod is None:
         raise HTTPException(status_code=400, detail="Product not in version")
     row = _upsert_product_review(
-        session, mv.id, prod.id, data.state, _actor(headers)
+        session, mv.id, prod.id, data.state, actor_label(headers)
     )
     session.commit()
     session.refresh(row)
@@ -1234,7 +1203,7 @@ def mark_domain_review(
             )
         ).all()
     ]
-    return _cascade_mark(session, mv.id, product_ids, data.state, _actor(headers))
+    return _cascade_mark(session, mv.id, product_ids, data.state, actor_label(headers))
 
 
 @router.post(
@@ -1269,7 +1238,7 @@ def mark_subdomain_review(
             )
         ).all()
     ]
-    return _cascade_mark(session, mv.id, product_ids, data.state, _actor(headers))
+    return _cascade_mark(session, mv.id, product_ids, data.state, actor_label(headers))
 
 
 # --- Compile (read-only; records nothing) -----------------------------------

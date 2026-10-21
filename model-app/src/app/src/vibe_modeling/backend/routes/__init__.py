@@ -9,6 +9,7 @@ endpoints (Phase 4 of the orchestrator refactor owns that surface).
 
 from . import (
     _dev_fixtures,
+    assessments,
     businesses,
     config,
     deployment,
@@ -22,6 +23,7 @@ from . import (
 
 __all__ = [
     "_dev_fixtures",
+    "assessments",
     "businesses",
     "config",
     "deployment",

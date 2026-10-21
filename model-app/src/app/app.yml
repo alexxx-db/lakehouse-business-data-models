@@ -1,6 +1,10 @@
+# Taxonomy drafts (backend/taxonomy/drafts.py) live in memory in this single process:
+# do NOT raise --workers or scale replicas, or a draft poll can hit a different process
+# (404). A redeploy/restart drops in-flight drafts; the UI offers "Draft again".
 command: ["uvicorn", "vibe_modeling.backend.app:app", "--workers", "1"]
 env:
-  # The four values below are rewritten by install/render_app_yaml.py at
+  # The four values below (and the two Domain Taxonomy Builder values at the
+  # end) are rewritten by install/render_app_yaml.py at
   # install time, driven by install/install.sh's --project / --catalog /
   # --warehouse-id flags. The defaults checked in here are what a canonical
   # `install.sh --profile <p>` (no overrides) produces and what local
@@ -47,3 +51,23 @@ env:
   # backend/core/_headers.py.
   - name: TRUST_FORWARDED_HEADERS
     value: "1"
+  # Domain Taxonomy Builder (optional, off by default). Both values are
+  # rewritten by install/render_app_yaml.py from install.sh's
+  # --enable-taxonomy-builder / --taxonomy-model-service flags. The model
+  # service (catalog.schema.service, called through the Unity AI Gateway) only
+  # seeds AgentConfig.taxonomy_model_service while that column is empty;
+  # Settings -> Platform owns it after that. The app SP needs USE CATALOG,
+  # USE SCHEMA and EXECUTE on the service.
+  - name: VIBE_MODELING_TAXONOMY_BUILDER_ENABLED
+    value: "false"
+  - name: VIBE_MODELING_TAXONOMY_MODEL_SERVICE
+    value: ""
+  # In-app bronze assessment (optional, off by default). Both values
+  # are rewritten by install/render_app_yaml.py from install.sh's
+  # --enable-assessment / --assess-reader-sp flags. The reader service
+  # principal (application id) only seeds AssessConfig.reader_application_id
+  # while that column is empty; Settings -> Assessment owns it after that.
+  - name: VIBE_MODELING_ASSESSMENT_ENABLED
+    value: "false"
+  - name: VIBE_MODELING_ASSESS_READER_SP
+    value: ""

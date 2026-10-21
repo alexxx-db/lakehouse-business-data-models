@@ -28,6 +28,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.workspace import ImportFormat
 
 from .bundled_agent import resolve_bundled_agent
+from .core._app_identity import app_sp_home
 
 logger = logging.getLogger(__name__)
 
@@ -57,17 +58,11 @@ def install_bundled_agent_into_workspace(ws: WorkspaceClient) -> InstallResult:
     if agent is None:
         raise BundledAgentNotPackagedError(
             "No bundled agent notebook is packaged with this app build. "
-            "Re-run scripts/refresh_vendored_agent.sh and rebuild the wheel."
+            "Check that src/app/vendored/agent/ holds the agent notebook, "
+            "then re-run install/install.sh to rebuild and redeploy the app."
         )
 
-    me = ws.current_user.me()
-    user_name = getattr(me, "user_name", None) or ""
-    if not user_name:
-        raise RuntimeError(
-            "Databricks returned a user with no user_name — cannot decide upload path."
-        )
-
-    folder = f"/Users/{user_name}/vibe-modelling-agent"
+    folder = f"{app_sp_home(ws)}/vibe-modelling-agent"
     target = f"{folder}/{agent.file_name}"
 
     try:

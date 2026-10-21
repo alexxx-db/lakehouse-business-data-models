@@ -7,7 +7,7 @@
  * detail string or the Pydantic msg(s) instead.
  */
 import { describe, expect, it } from "vitest";
-import { apiErrorMessage, parse409 } from "@/lib/api-error";
+import { apiErrorMessage, parse409, parseAdminHelp, parsePlainConflict } from "@/lib/api-error";
 import { ApiError } from "@/lib/api";
 
 interface SampleConflict {
@@ -129,5 +129,74 @@ describe("apiErrorMessage", () => {
       error: "version_in_use",
     });
     expect(apiErrorMessage(err)).toBe("Version delete blocked");
+  });
+});
+
+describe("parseAdminHelp", () => {
+  it("reads every field of an admin_help detail", () => {
+    const err = new ApiError(502, "Bad Gateway", {
+      detail: {
+        error: "admin_help", message: "Hand-off failed: PERMISSION_DENIED", job_url: "https://ws/jobs/7",
+        run_url: "https://ws/jobs/7/runs/9", runs_path: "/Volumes/c/_metamodel/assess_runs/b/d",
+        job_reader: "reader-app-id",
+      },
+    });
+    expect(parseAdminHelp(err)).toEqual({
+      message: "Hand-off failed: PERMISSION_DENIED", job_url: "https://ws/jobs/7",
+      run_url: "https://ws/jobs/7/runs/9", runs_path: "/Volumes/c/_metamodel/assess_runs/b/d",
+      job_reader: "reader-app-id",
+    });
+  });
+
+  it("unwraps a body passed directly (no detail wrapper), at any status", () => {
+    const err = new ApiError(500, "Internal Server Error", { error: "admin_help", message: "Couldn't add" });
+    expect(parseAdminHelp(err)).toEqual({ message: "Couldn't add" });
+  });
+
+  it("carries the not_ready reasons of a launch 409", () => {
+    const err = new ApiError(409, "Conflict", {
+      detail: { error: "admin_help", message: "not ready", job_url: "https://ws/jobs/7", not_ready: ["No reader service principal", ""] },
+    });
+    expect(parseAdminHelp(err)?.not_ready).toEqual(["No reader service principal"]);
+  });
+
+  it("drops empty links", () => {
+    const err = new ApiError(409, "Conflict", { detail: { error: "admin_help", message: "m", job_url: "", run_url: "  " } });
+    const help = parseAdminHelp(err)!;
+    expect(help.job_url).toBeUndefined();
+    expect(help.run_url).toBeUndefined();
+  });
+
+  it("falls back to the HTTP message, not the discriminator, for an empty message", () => {
+    const err = new ApiError(502, "Bad Gateway", { detail: { error: "admin_help", message: "" } });
+    expect(parseAdminHelp(err)?.message).toBe("HTTP 502: Bad Gateway");
+  });
+
+  it("returns null for other errors", () => {
+    expect(parseAdminHelp(new ApiError(422, "Unprocessable", { detail: "bad reader" }))).toBeNull();
+    expect(parseAdminHelp(new ApiError(422, "Unprocessable", { detail: { error: "config_missing", missing: [] } }))).toBeNull();
+    expect(parseAdminHelp(new Error("boom"))).toBeNull();
+    expect(parseAdminHelp(undefined)).toBeNull();
+  });
+});
+
+describe("parsePlainConflict", () => {
+  const race = new ApiError(409, "Conflict", {
+    detail: { message: "Another request changed this next vibe's feedback link at the same time; try again." },
+  });
+
+  it("reads a plain {message} 409 without an error key", () => {
+    expect(parsePlainConflict(race)).toBe("Another request changed this next vibe's feedback link at the same time; try again.");
+  });
+
+  it("is not admin help", () => {
+    expect(parseAdminHelp(race)).toBeNull();
+  });
+
+  it("returns null for admin_help, other statuses and empty messages", () => {
+    expect(parsePlainConflict(new ApiError(409, "Conflict", { detail: { error: "admin_help", message: "m" } }))).toBeNull();
+    expect(parsePlainConflict(new ApiError(500, "Error", { detail: { message: "m" } }))).toBeNull();
+    expect(parsePlainConflict(new ApiError(409, "Conflict", { detail: { message: " " } }))).toBeNull();
+    expect(parsePlainConflict(new Error("m"))).toBeNull();
   });
 });

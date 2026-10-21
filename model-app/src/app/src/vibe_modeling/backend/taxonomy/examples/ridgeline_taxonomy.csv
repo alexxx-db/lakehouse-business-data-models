@@ -1,0 +1,68 @@
+Domain,Sub Domain,Category
+Customer & Premise,Party Master,Customer
+Customer & Premise,Party Master,Customer Account
+Customer & Premise,Party Master,Contact
+Customer & Premise,Service Location,Premise
+Customer & Premise,Service Location,Service Point
+Customer & Premise,Service Location,Service Agreement
+Customer & Premise,Assistance Programs,Energy Efficiency Program
+Customer & Premise,Assistance Programs,Low-Income Assistance
+Customer & Premise,Assistance Programs,Budget Billing Plan
+Meter-to-Cash,Meter Reading,Meter
+Meter-to-Cash,Meter Reading,Meter Read
+Meter-to-Cash,Meter Reading,Interval Usage
+Meter-to-Cash,Tariff Schedules,Rate Schedule
+Meter-to-Cash,Tariff Schedules,Tariff Rider
+Meter-to-Cash,Bill Production,Bill
+Meter-to-Cash,Bill Production,Bill Line Item
+Meter-to-Cash,Payment Collections,Payment
+Meter-to-Cash,Payment Collections,Payment Arrangement
+Meter-to-Cash,Payment Collections,Collection Case
+Electric Grid,Transmission Grid,Substation
+Electric Grid,Transmission Grid,Transmission Line
+Electric Grid,Distribution Network,Feeder
+Electric Grid,Distribution Network,Distribution Transformer
+Electric Grid,Distribution Network,Pole
+Electric Grid,Distribution Network,Switching Device
+Electric Grid,Distributed Generation,DER Asset
+Electric Grid,Distributed Generation,Interconnection Request
+Gas Network,Pipeline Network,Gas Main
+Gas Network,Pipeline Network,Gas Service Line
+Gas Network,Pipeline Network,Regulator Station
+Gas Network,Integrity Management,Leak Survey
+Gas Network,Integrity Management,Gas Leak
+Gas Network,Integrity Management,Integrity Assessment
+Work & Asset Management,Work Execution,Work Order
+Work & Asset Management,Work Execution,Work Task
+Work & Asset Management,Maintenance Planning,Maintenance Plan
+Work & Asset Management,Maintenance Planning,Asset Inspection
+Work & Asset Management,Material Inventory,Material
+Work & Asset Management,Material Inventory,Storeroom Inventory
+Outage & Reliability,Outage Response,Outage Event
+Outage & Reliability,Outage Response,Trouble Ticket
+Outage & Reliability,Outage Response,Restoration Step
+Outage & Reliability,Reliability Performance,Reliability Index
+Outage & Reliability,Reliability Performance,Major Event Day
+Energy Supply & Trading,Generation Fleet,Generation Unit
+Energy Supply & Trading,Generation Fleet,Generation Output
+Energy Supply & Trading,Energy Procurement,Power Purchase Agreement
+Energy Supply & Trading,Energy Procurement,Gas Supply Contract
+Energy Supply & Trading,Market Operations,Market Settlement
+Energy Supply & Trading,Market Operations,Load Forecast
+Finance & Regulatory,Financial Accounting,General Ledger
+Finance & Regulatory,Financial Accounting,Capital Project
+Finance & Regulatory,Financial Accounting,Supplier
+Finance & Regulatory,Rate Regulation,Rate Case
+Finance & Regulatory,Rate Regulation,Regulatory Filing
+People & Field Workforce,Workforce Management,Employee
+People & Field Workforce,Workforce Management,Organization
+People & Field Workforce,Workforce Management,Craft Certification
+People & Field Workforce,Field Operations,Crew
+People & Field Workforce,Field Operations,Field Dispatch
+People & Field Workforce,Field Operations,Contractor
+People & Field Workforce,Field Operations,Fleet Vehicle
+Safety & Environmental,Incident Management,Safety Incident
+Safety & Environmental,Incident Management,Corrective Action
+Safety & Environmental,Environmental Permits,Environmental Permit
+Safety & Environmental,Environmental Permits,Emissions Record
+Safety & Environmental,Security Controls,NERC CIP Control

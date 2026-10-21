@@ -1,26 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Suspense } from "react";
-import { QueryErrorResetBoundary } from "@tanstack/react-query";
+import { Suspense, useEffect, useRef } from "react";
+import { QueryErrorResetBoundary, useQueryClient } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { ArrowRight, Clock } from "lucide-react";
 
 import {
   useListBusinessesSuspense,
-  useListIndustriesSuspense,
+  getUserPreferencesKey,
   useGetUserPreferences,
-  BusinessKind,
   type BusinessListOut,
-  type IndustryOut,
   type UserPreferenceOut,
 } from "@/lib/api";
 import { selector } from "@/lib/selector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkflowDiagram } from "@/components/flow/workflow-diagram";
+import { useAssessReady } from "@/lib/assessment";
 import { EntryPoints } from "@/components/home/entry-points";
 import { JumpBackInList } from "@/components/home/jump-back-in";
 import {
   buildRecentItems,
-  VISIT_BUSINESS_PREFIX,
+  collectVisits,
+  deleteVisitKeys,
+  pruneVisits,
 } from "@/components/home/recent-items";
 
 export const Route = createFileRoute("/_sidebar/")({
@@ -50,6 +51,7 @@ export function HomePage() {
 }
 
 function OrientationStrip() {
+  const { ready: assessReady } = useAssessReady();
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -67,7 +69,7 @@ function OrientationStrip() {
         </Link>
       </div>
       <div className="rounded-md border border-border bg-card p-5">
-        <WorkflowDiagram variant="strip" />
+        <WorkflowDiagram variant="strip" assessment={assessReady} />
       </div>
     </section>
   );
@@ -78,27 +80,40 @@ function OrientationStrip() {
  *  the home page. Visit times come from the per-user preference store, so the
  *  list reorders after visiting a business, industry, or model version. */
 function ResumeSection() {
-  const { data: businesses } = useListBusinessesSuspense<BusinessListOut[]>({
-    params: { kind: BusinessKind.business },
-    ...selector<BusinessListOut[]>(),
-  });
-  const { data: industries } =
-    useListIndustriesSuspense<IndustryOut[]>(selector<IndustryOut[]>());
+  // Unfiltered: businesses and industries are both `businesses` rows, told
+  // apart by `kind`.
+  const {
+    data: businesses,
+    dataUpdatedAt,
+    isFetching,
+  } = useListBusinessesSuspense<BusinessListOut[]>(selector<BusinessListOut[]>());
   // Non-suspense + no retry: a preferences fetch failure degrades to
   // creation-order rather than throwing into the ErrorBoundary. `select`
   // unwraps the `{ data }` envelope so `prefs` is the array directly.
-  const { data: prefs } = useGetUserPreferences<UserPreferenceOut[]>({
+  const { data: prefs, isFetching: prefsFetching } = useGetUserPreferences<UserPreferenceOut[]>({
     query: { retry: false, select: (r) => r.data },
   });
 
-  const visitTimes = new Map<string, string>();
-  for (const p of prefs ?? []) {
-    if (p.key.startsWith(VISIT_BUSINESS_PREFIX)) {
-      visitTimes.set(p.key.slice(VISIT_BUSINESS_PREFIX.length), p.updated_at);
-    }
-  }
+  // Prune stale and excess visit rows once per mount, after both reads have
+  // finished fetching (cached prefs may predate a visit just recorded). The ref outlives StrictMode's simulated remount and the prefs
+  // refetch that the invalidation below causes.
+  const queryClient = useQueryClient();
+  const pruned = useRef(false);
+  useEffect(() => {
+    if (pruned.current || prefs === undefined || isFetching || prefsFetching) return;
+    pruned.current = true;
+    const keys = pruneVisits(prefs, businesses, dataUpdatedAt);
+    if (keys.length === 0) return;
+    void deleteVisitKeys(keys)
+      .then((anyDeleted) =>
+        anyDeleted
+          ? queryClient.invalidateQueries({ queryKey: getUserPreferencesKey() })
+          : undefined,
+      )
+      .catch(() => {});
+  }, [prefs, businesses, dataUpdatedAt, isFetching, prefsFetching, queryClient]);
 
-  const items = buildRecentItems(businesses, industries, visitTimes);
+  const items = buildRecentItems(businesses, collectVisits(prefs ?? []));
 
   return (
     <>

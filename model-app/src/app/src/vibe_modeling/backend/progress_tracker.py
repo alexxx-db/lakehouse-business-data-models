@@ -21,6 +21,7 @@ from sqlmodel import Session, select
 
 from .core import resolve_metamodel_catalog
 from .core._config import AppConfig
+from .core._time import as_utc
 from .db_models import (
     AgentConfig,
     ModelVersion,
@@ -217,7 +218,7 @@ STALE_THRESHOLD_MINUTES = 20
 # event (`last_consumed_step_id > 0`), the watchdog is active regardless
 # of elapsed time so mid-flight failures surface promptly.
 #
-# D-09 (plan task #51) bumped 90 → 180: serverless cold starts on the test workspace
+# D-09 (plan task #51) bumped 90 → 180: serverless cold starts on a test workspace
 # routinely take 2+ minutes before the agent emits its first row, and the
 # tighter window was occasionally clipping legitimate boots when the
 # Jobs API briefly reported a transient TERMINATED/INTERNAL_ERROR pair
@@ -602,8 +603,7 @@ class ProgressTracker:
         no-op when the agent already wrote 100), so it cannot regress
         the normal happy path. It always stamps ``completion_date``.
 
-        Tracks upstream agent fix at
-        ``docs/upstream-issues/agent-metric-view-failure.md`` (proposal A).
+        Stays until the upstream agent writes 100 itself on this path.
         """
         where_parts = [f"session_id = {session_id_bigint}", "completed_percent < 100"]
         if business_name:
@@ -915,7 +915,7 @@ class ProgressTracker:
         # 1) Drain step events FIRST, regardless of session-status row.
         #    The agent writes events to ``_vibe_progress`` as it boots
         #    but the ``_business`` session row may not appear until later
-        #    in the run (observed on the test workspace vibe-iterate: 73 events written
+        #    in the run (seen in a vibe-iterate run on a test workspace: 73 events written
         #    to Delta, 0 in Lakebase, run failed because we early-returned
         #    on ``status is None`` and never drained). The producer/
         #    consumer contract is by step_id ordering, not session
@@ -1214,8 +1214,6 @@ class ProgressTracker:
 
           * ``install/provision_lakebase.py`` — single 5s sync poll
             for endpoint host assignment.
-          * ``scripts/smoke/e2e_run.py`` / ``e2e_full.py`` — single 60s
-            sync poll for run terminal state.
           * ``services/operations/vibe_iterate.py`` /
             ``_generation_common.py`` — exponential-backoff retry on
             ``ws.files.download`` failure, not a status poll.
@@ -1447,9 +1445,7 @@ class ProgressTracker:
         if started is None:
             return True
         now = datetime.now(timezone.utc)
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=timezone.utc)
-        return (now - started).total_seconds() >= WATCHDOG_WARM_UP_SECONDS
+        return (now - as_utc(started)).total_seconds() >= WATCHDOG_WARM_UP_SECONDS
 
     def _compose_job_failure_message(self, job_run, lcs: str, rs: str) -> str:
         """Join job-level state_message with any task-level state_messages so

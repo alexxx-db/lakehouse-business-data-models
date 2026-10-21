@@ -4,6 +4,7 @@ import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useCurrentUserSuspense } from "@/lib/api";
 import selector from "@/lib/selector";
+import { userInitials } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -13,56 +14,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import {
-  User,
-  Mail,
-  Shield,
-  Users,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { Mail, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_sidebar/profile")({
   component: () => <Profile />,
 });
 
-interface ScimUser {
-  id?: string;
-  user_name?: string;
-  display_name?: string;
-  active?: boolean;
-  external_id?: string;
-  name?: { given_name?: string; family_name?: string };
-  emails?: { value: string; primary?: boolean; type?: string }[];
-  roles?: { value: string }[];
-  groups?: { display?: string; value: string }[];
-  entitlements?: { value: string }[];
-}
-
 function ProfileContent() {
-  const { data } = useCurrentUserSuspense(selector());
-  const user = data as ScimUser;
-
-  const getInitials = () => {
-    if (user.name?.given_name && user.name?.family_name) {
-      return `${user.name.given_name[0]}${user.name.family_name[0]}`.toUpperCase();
-    }
-    if (user.display_name) {
-      const parts = user.display_name.split(" ");
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-      }
-      return user.display_name.substring(0, 2).toUpperCase();
-    }
-    if (user.user_name) {
-      return user.user_name.substring(0, 2).toUpperCase();
-    }
-    return "U";
-  };
+  const { data: user } = useCurrentUserSuspense(selector());
 
   return (
     <div className="space-y-6">
@@ -72,96 +33,21 @@ function ProfileContent() {
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
               <AvatarFallback className="text-2xl font-semibold tracking-tight bg-primary/10">
-                {getInitials()}
+                {userInitials(user.display_name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 text-center md:text-left space-y-2">
-              <div className="flex items-center gap-3 justify-center md:justify-start">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  {user.display_name || user.user_name || "User"}
-                </h1>
-                {user.active !== null && (
-                  <Badge
-                    variant={user.active ? "default" : "secondary"}
-                    className="flex items-center gap-1"
-                  >
-                    {user.active ? (
-                      <>
-                        <CheckCircle className="h-3 w-3" />
-                        Active
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-3 w-3" />
-                        Inactive
-                      </>
-                    )}
-                  </Badge>
-                )}
-              </div>
-              {user.user_name && (
-                <p className="text-muted-foreground">@{user.user_name}</p>
-              )}
-              {user.id && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  ID: {user.id}
-                </p>
-              )}
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {user.display_name}
+              </h1>
+              <p className="text-muted-foreground">{user.user_name}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* User Details Grid */}
+      {/* Contact Information */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Personal Information */}
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Personal Information
-            </CardTitle>
-            <CardDescription>Basic user details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {user.name && (
-              <>
-                {user.name.given_name && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      First Name
-                    </p>
-                    <p className="text-lg">{user.name.given_name}</p>
-                  </div>
-                )}
-                {user.name.family_name && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Last Name
-                      </p>
-                      <p className="text-lg">{user.name.family_name}</p>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-            {user.external_id && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    External ID
-                  </p>
-                  <p className="text-sm font-mono">{user.external_id}</p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Contact Information */}
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -171,23 +57,11 @@ function ProfileContent() {
             <CardDescription>Email addresses</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {user.emails && user.emails.length > 0 ? (
+            {user.emails.length > 0 ? (
               user.emails.map((email, index) => (
-                <div key={index}>
+                <div key={email.value}>
                   {index > 0 && <Separator className="mb-4" />}
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm break-all">{email.value}</p>
-                    {email.primary && (
-                      <Badge variant="secondary" className="text-xs">
-                        Primary
-                      </Badge>
-                    )}
-                  </div>
-                  {email.type && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Type: {email.type}
-                    </p>
-                  )}
+                  <p className="text-sm break-all">{email.value}</p>
                 </div>
               ))
             ) : (
@@ -197,78 +71,6 @@ function ProfileContent() {
             )}
           </CardContent>
         </Card>
-
-        {/* Roles */}
-        {user.roles && user.roles.length > 0 && (
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Roles
-              </CardTitle>
-              <CardDescription>
-                User roles and permissions ({user.roles.length})
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {user.roles.map((role, index) => (
-                  <Badge key={index} variant="outline">
-                    {role.value}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Groups */}
-        {user.groups && user.groups.length > 0 && (
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Groups
-              </CardTitle>
-              <CardDescription>
-                User group memberships ({user.groups.length})
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {user.groups.map((group, index) => (
-                  <Badge key={index} variant="outline">
-                    {group.display || group.value}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Entitlements */}
-        {user.entitlements && user.entitlements.length > 0 && (
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Entitlements
-              </CardTitle>
-              <CardDescription>
-                User entitlements ({user.entitlements.length})
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {user.entitlements.map((entitlement, index) => (
-                  <Badge key={index} variant="secondary">
-                    {entitlement.value}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );
@@ -285,26 +87,23 @@ function ProfileSkeleton() {
             <div className="flex-1 space-y-2 text-center md:text-left">
               <Skeleton className="h-8 w-48 mx-auto md:mx-0" />
               <Skeleton className="h-4 w-32 mx-auto md:mx-0" />
-              <Skeleton className="h-3 w-64 mx-auto md:mx-0" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Cards Skeleton */}
+      {/* Contact Card Skeleton */}
       <div className="grid gap-6 md:grid-cols-2">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="border-primary/20">
-            <CardHeader>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="border-primary/20">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

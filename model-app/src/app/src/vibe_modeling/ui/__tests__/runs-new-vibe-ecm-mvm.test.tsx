@@ -526,7 +526,7 @@ describe("runs.new — validate blocker for MVM parent renders inline", () => {
 });
 
 // ---------------------------------------------------------------------------
-// CommandStrip — "Prepare new Vibe" entry visibility on ECM vs MVM versions.
+// CommandStrip — "Prepare new Vibe" entry on ECM and MVM versions.
 // The strip button no longer launches the run directly; it opens the prepare/
 // compose surface (the combined ECM+MVM operation stays selectable on the run
 // form, covered by the option tests above).
@@ -546,7 +546,7 @@ function findLauncher(container: HTMLElement): HTMLElement | null {
   );
 }
 
-describe("CommandStrip — Prepare new Vibe entry on ECM versions", () => {
+describe("CommandStrip — Prepare new Vibe entry", () => {
   it("shows the entry when scope='ecm'", async () => {
     const { CommandStrip } = await import(
       "@/components/overview/command-strip"
@@ -580,7 +580,7 @@ describe("CommandStrip — Prepare new Vibe entry on ECM versions", () => {
     }
   });
 
-  it("hides OR disables the launcher when scope='mvm'", async () => {
+  it("shows the entry, linking to the compose surface, when scope='mvm'", async () => {
     const { CommandStrip } = await import(
       "@/components/overview/command-strip"
     );
@@ -595,22 +595,12 @@ describe("CommandStrip — Prepare new Vibe entry on ECM versions", () => {
       />,
     );
 
-    // Spec: "hide or disable — pick one". Accept either render — the
-    // dev agent picks. If absent the launcher is null; if present the
-    // launcher must be disabled (button) or aria-disabled (anchor)
-    // with a hint mentioning ECM.
-    const launcher = findLauncher(container);
-    if (launcher === null) {
-      // Hidden render — done.
-      expect(launcher).toBeNull();
-      return;
-    }
-    const disabledAttr =
-      launcher.hasAttribute("disabled") ||
-      launcher.getAttribute("aria-disabled") === "true";
-    expect(disabledAttr).toBe(true);
-    const title = launcher.getAttribute("title") || "";
-    const aria = launcher.getAttribute("aria-label") || "";
-    expect(`${title} ${aria}`.toLowerCase()).toMatch(/ecm/);
+    await waitFor(() => {
+      expect(findLauncher(container)).not.toBeNull();
+    });
+    const launcher = findLauncher(container)!;
+    expect(launcher.hasAttribute("disabled")).toBe(false);
+    expect(launcher.getAttribute("aria-disabled")).not.toBe("true");
+    expect(launcher.getAttribute("href") || "").toMatch(/\/inputs$/);
   });
 });

@@ -19,7 +19,7 @@
  */
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +35,7 @@ import {
 import { formatDuration } from "@/lib/date";
 import { getRunProgress, useListRunOperations, type RunOperationOut, type RunStatus } from "@/lib/api";
 import { isTerminalRunStatus } from "@/lib/run-status";
+import { useNow } from "@/lib/use-now";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -765,13 +766,7 @@ function RunHierarchyPipelineInner({
       (e) => RUNNING_STATUSES.has(e.status) && !isSuperseded(e, maxStepId),
     );
 
-  const [, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!hasRunning) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [hasRunning]);
-  const nowMs = Date.now();
+  const nowMs = useNow(hasRunning);
 
   // Partition events by phase.
   const eventsByPhase = partitionEventsByPhase(events, sortedOps);

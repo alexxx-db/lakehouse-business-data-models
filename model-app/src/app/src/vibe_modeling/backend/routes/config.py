@@ -12,8 +12,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
+from starlette.concurrency import run_in_threadpool
 
 from ..._metadata import api_prefix
 from ..agent_compat import (
@@ -22,6 +25,7 @@ from ..agent_compat import (
     latest_known_upstream_tag,
 )
 from ..core import Dependencies, resolve_metamodel_catalog
+from ..core._time import as_utc
 from ..db_models import AgentConfig
 from ..models import (
     AgentCompatChange,
@@ -37,14 +41,30 @@ from ..models import (
     WarehouseOut,
 )
 from ..job_launcher import setup_agent_job
+from ..taxonomy.access import MODEL_SERVICE_ACCESS, REFUSED_CHECKS
+from ..taxonomy.llm import error_text, make_taxonomy_llm
+from ..taxonomy.models import (
+    TaxonomyCheckOut,
+    TaxonomyConfigIn,
+    TaxonomyConfigOut,
+    TaxonomyModelServicesOut,
+)
+from ..taxonomy.service_name import split_model_service_name, strip_resource_prefix
+from ..taxonomy.slots import DEFAULT_CAPACITY, TAXONOMY_SLOTS
 from ._helpers import (
     _build_dbx_job_url,
+    _CONFIG_REQUIREMENTS,
     _detect_notebook_identity,
     _get_or_create_agent_config,
     _preflight_notebook_access,
     _preflight_notebook_version,
     fetch_upstream_agent_identity,
     require_config,
+)
+from .taxonomy import (
+    TaxonomyLLMSettings,
+    read_taxonomy_llm_settings,
+    require_taxonomy_installed,
 )
 
 # Canonical upstream repo the release monitor compares against. The compat
@@ -304,9 +324,7 @@ def get_agent_compat(
     cfg = _get_or_create_agent_config(session, config)
     now = datetime.now(timezone.utc)
 
-    checked_at = cfg.upstream_checked_at
-    if checked_at is not None and checked_at.tzinfo is None:
-        checked_at = checked_at.replace(tzinfo=timezone.utc)
+    checked_at = as_utc(cfg.upstream_checked_at)
     stale = checked_at is None or (now - checked_at) > _UPSTREAM_CACHE_TTL
 
     if stale:
@@ -789,3 +807,190 @@ def import_oob_versions(
     summary = svc.discover_and_sync(cfg.deployment_catalog)
     session.commit()
     return summary
+
+
+# --- Domain Taxonomy Builder ---
+#
+# Settings for the optional wizard (/api/taxonomy/*). GET is open to every
+# role (the landing page and the wizard read ``ready``) and answers even when
+# the feature is not installed; the rest are AdminOnly and 404 when it is not.
+# Values live on the AgentConfig singleton. A non-empty model service must
+# pass a test call as the app SP before it is saved (taxonomy/access.py).
+
+TaxonomyInstalled = Annotated[None, Depends(require_taxonomy_installed)]
+StoredTaxonomySettings = Annotated[TaxonomyLLMSettings, Depends(read_taxonomy_llm_settings)]
+
+# The UC list ignores ``max_results``; ``page_size`` is honoured, at most 200
+# (test workspace, 2026-10-19). It counts services scanned, not returned, so pages come
+# back with only the services the caller can see and the list must follow
+# ``next_page_token``. Unfiltered on purpose: ``catalog_name``/``schema_name``
+# are ignored too, and the SP may see services in any schema.
+MODEL_SERVICES_LIST_PATH = "/api/2.1/unity-catalog/model-services"
+MODEL_SERVICES_PAGE_SIZE = 200
+MODEL_SERVICES_MAX_PAGES = 50
+# The wizard calls chat completions; services that declare other API types
+# only (embeddings) are left out of the picker. A service that declares none
+# is kept.
+CHAT_API_TYPE = "mlflow/v1/chat/completions"
+
+
+def _taxonomy_config_out(session, config) -> TaxonomyConfigOut:
+    """The one place ``ready`` is computed: installed, a model service is set,
+    and its last test call (this process) was not refused. Never checked and
+    ``busy`` count as ready. A refusal - in Settings or when a draft is
+    refused - hides the wizard until a test call succeeds: a Test or Save, or
+    the background re-probe ``get_taxonomy_config`` starts once the refusal
+    is older than ``REFUSED_RECHECK_AFTER``."""
+    cfg = _get_or_create_agent_config(session, config)
+    installed = bool(config.taxonomy_builder_enabled)
+    service = (cfg.taxonomy_model_service or "").strip()
+    last_check = MODEL_SERVICE_ACCESS.last_check(service) if service else None
+    refused = bool(service) and MODEL_SERVICE_ACCESS.is_refused(service)
+    return TaxonomyConfigOut(
+        installed=installed,
+        model_service=service,
+        install_default_model_service=config.taxonomy_install_default_model_service,
+        max_concurrency=cfg.taxonomy_llm_max_concurrency,
+        ready=installed and bool(service) and not refused,
+        last_check=last_check,
+    )
+
+
+def _save_taxonomy_config(session, config, model_service: str, max_concurrency: int) -> TaxonomyConfigOut:
+    cfg = _get_or_create_agent_config(session, config)
+    cfg.taxonomy_model_service = model_service
+    cfg.taxonomy_llm_max_concurrency = max_concurrency
+    cfg.updated_at = datetime.now(timezone.utc)
+    session.add(cfg)
+    session.commit()
+    session.refresh(cfg)
+    return _taxonomy_config_out(session, config)
+
+
+@router.get("/config/taxonomy", response_model=TaxonomyConfigOut, operation_id="getTaxonomyConfig")
+def get_taxonomy_config(session: Dependencies.Session, config: Dependencies.Config):
+    """Whether the Domain Taxonomy Builder is installed and ready, its model
+    service and concurrency limit, and the last test call's result. When the
+    last check is refused and stale, starts one background re-probe and
+    answers with the current state at once; the next read shows the result.
+    Not installed: answers ``installed=false`` without touching the
+    AgentConfig row (no read, no lazy create)."""
+    if not config.taxonomy_builder_enabled:
+        return TaxonomyConfigOut(
+            installed=False,
+            model_service="",
+            install_default_model_service="",
+            max_concurrency=DEFAULT_CAPACITY,
+            ready=False,
+            last_check=None,
+        )
+    out = _taxonomy_config_out(session, config)
+    if out.installed and out.model_service:
+        MODEL_SERVICE_ACCESS.maybe_recheck(
+            out.model_service, lambda: make_taxonomy_llm(out.model_service), TAXONOMY_SLOTS,
+        )
+    return out
+
+
+@router.put("/config/taxonomy", response_model=TaxonomyConfigOut, operation_id="updateTaxonomyConfig")
+async def update_taxonomy_config(
+    data: TaxonomyConfigIn,
+    session: Dependencies.Session,
+    config: Dependencies.Config,
+    _installed: TaxonomyInstalled,
+    _role: Dependencies.AdminOnly,
+):
+    """Save the model service and concurrency limit. A non-empty service must
+    be ``catalog.schema.service`` (422) and pass the test call: ``denied``,
+    ``not_found`` and ``error`` refuse with 400 and save nothing; ``busy``
+    saves, and ``last_check`` carries the warning. Clearing is allowed only
+    when there is no install default (Reset writes the default instead)."""
+    service = data.model_service.strip()
+    if service:
+        try:
+            split_model_service_name(service)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+    elif config.taxonomy_install_default_model_service:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"This installation has a default model service "
+                f"('{config.taxonomy_install_default_model_service}'). Reset to it instead of clearing."
+            ),
+        )
+    if service:
+        check = await MODEL_SERVICE_ACCESS.probe(make_taxonomy_llm(service), TAXONOMY_SLOTS)
+        if check.status in REFUSED_CHECKS:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "model_service_refused", "status": check.status, "message": check.message},
+            )
+    return await run_in_threadpool(_save_taxonomy_config, session, config, service, data.max_concurrency)
+
+
+@router.post("/config/taxonomy/test", response_model=TaxonomyCheckOut, operation_id="testTaxonomyModelService")
+async def run_taxonomy_model_service_test(
+    _installed: TaxonomyInstalled,
+    _role: Dependencies.AdminOnly,
+    settings: StoredTaxonomySettings,
+):
+    """Run the test call against the stored model service and record it as
+    ``last_check``. With no service stored, returns an ``error`` result and
+    records nothing."""
+    if not settings.model_service:
+        return TaxonomyCheckOut(
+            status="error",
+            message=_CONFIG_REQUIREMENTS["taxonomy_llm"]["message"],
+            checked_at=MODEL_SERVICE_ACCESS.now(),
+        )
+    return await MODEL_SERVICE_ACCESS.probe(make_taxonomy_llm(settings.model_service), TAXONOMY_SLOTS)
+
+
+def _model_service_sort_key(name: str) -> tuple[bool, str]:
+    return (name.startswith("system.ai."), name.lower())
+
+
+@router.get(
+    "/config/taxonomy/model-services",
+    response_model=TaxonomyModelServicesOut,
+    operation_id="listTaxonomyModelServices",
+)
+def list_taxonomy_model_services(
+    ws: Dependencies.Client,
+    _installed: TaxonomyInstalled,
+    _role: Dependencies.AdminOnly,
+):
+    """The UC model services the app service principal can see, for the
+    Settings picker. On failure returns ``[]`` plus a message, and Settings
+    falls back to free text."""
+    names: set[str] = set()
+    token: str | None = None
+    try:
+        for _ in range(MODEL_SERVICES_MAX_PAGES):
+            query: dict[str, object] = {"page_size": MODEL_SERVICES_PAGE_SIZE}
+            if token:
+                query["page_token"] = token
+            resp = ws.api_client.do("GET", MODEL_SERVICES_LIST_PATH, query=query)
+            if not isinstance(resp, dict):
+                raise TypeError(f"unexpected list response: {type(resp).__name__}")
+            for item in resp.get("model_services") or []:
+                api_types = item.get("supported_api_types")
+                if api_types and CHAT_API_TYPE not in api_types:
+                    continue
+                name = strip_resource_prefix(str(item.get("name") or ""))
+                try:
+                    split_model_service_name(name)
+                except ValueError:
+                    continue
+                names.add(name)
+            token = resp.get("next_page_token")
+            if not token:
+                break
+    except Exception as e:  # noqa: BLE001 - any failure falls back to free text
+        logger.warning("Listing model services failed: %s", e)
+        return TaxonomyModelServicesOut(services=[], message=f"Couldn't list model services: {error_text(e)}")
+    message = None
+    if token:
+        message = "Not every model service could be listed. Type the full name if yours is missing."
+    return TaxonomyModelServicesOut(services=sorted(names, key=_model_service_sort_key), message=message)

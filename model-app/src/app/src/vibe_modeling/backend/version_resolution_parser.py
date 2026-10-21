@@ -26,7 +26,7 @@ The App pre-allocates the output version at observe-time via
 ``next_version_for_scope``. Without parsing this event, that allocation
 recomputes ``v1`` while the agent has already written to ``v3``, leaving the
 ``ModelVersion`` row out of sync with the Volume artifacts the agent
-produced (the 2026-05-04 the test workspace incident).
+produced (the 2026-05-04 test workspace incident).
 
 Contract
 --------

@@ -1,0 +1,40 @@
+{
+  "company_name": "Ridgeline Energy",
+  "industry": "Electric & gas utility",
+  "division_names": ["Customer Operations", "Grid & Gas Operations", "Energy Supply", "Corporate"],
+  "schema_names": {
+      "Customer & Premise": "customer",
+      "Meter-to-Cash": "billing",
+      "Electric Grid": "grid",
+      "Gas Network": "gas",
+      "Work & Asset Management": "asset",
+      "Outage & Reliability": "outage",
+      "Energy Supply & Trading": "supply",
+      "Finance & Regulatory": "finance",
+      "People & Field Workforce": "workforce",
+      "Safety & Environmental": "safety"
+  },
+  "coverage": "Operations, Business and Corporate",
+  "shared_masters": [
+    {"entity": "premise", "home_domain": "customer"},
+    {"entity": "service_point", "home_domain": "customer"},
+    {"entity": "customer_account", "home_domain": "customer"},
+    {"entity": "supplier", "home_domain": "finance"},
+    {"entity": "employee", "home_domain": "workforce"},
+    {"entity": "organization", "home_domain": "workforce"}
+  ],
+  "relationships": [
+    {"source": "service_point", "targets": ["premise"]},
+    {"source": "meter", "targets": ["service_point"]},
+    {"source": "service_agreement", "targets": ["customer_account", "service_point", "rate_schedule"]},
+    {"source": "bill", "targets": ["service_agreement"]},
+    {"source": "interval_usage", "targets": ["meter"]},
+    {"source": "outage_event", "targets": ["feeder"]},
+    {"source": "trouble_ticket", "targets": ["service_point"]},
+    {"source": "work_order", "targets": ["asset (grid or gas)", "crew"]},
+    {"source": "gas_leak", "targets": ["gas_main or gas_service_line"]},
+    {"source": "der_asset", "targets": ["service_point", "feeder"]},
+    {"source": "capital_project", "targets": ["work_order"]},
+    {"source": "safety_incident", "targets": ["employee"]}
+  ]
+}

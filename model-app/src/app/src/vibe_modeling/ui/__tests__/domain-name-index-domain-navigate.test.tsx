@@ -46,6 +46,7 @@ vi.mock("@/lib/api", async () => {
         ],
       },
     }),
+    useListVersionsSuspense: () => ({ data: [] }),
     useGetExplorerVersionsSuspense: () => ({
       data: [{ id: "v-1", version: 1, scope: "ecm" }],
     }),

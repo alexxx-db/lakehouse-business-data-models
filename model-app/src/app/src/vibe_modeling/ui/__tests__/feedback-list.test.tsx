@@ -14,7 +14,7 @@
  *   3. The wired delete handler calls `deleteVibeInput` with the input id.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -49,6 +49,22 @@ const FEEDBACK_HAPPY = [
     deprecated_by: "alice",
     created_at: "2026-04-20T00:00:00Z",
     updated_at: "2026-04-20T00:00:00Z",
+    anchor: { level: "model_wide", path: [] },
+  },
+];
+
+const FEEDBACK_MULTI_DOMAIN = [
+  { ...FEEDBACK_HAPPY[0] },
+  {
+    ...FEEDBACK_HAPPY[0],
+    id: "fb-3",
+    text: "Sales orders need currency",
+    anchor: { level: "element", domain_name: "sales", path: ["Domain: sales"] },
+  },
+  {
+    ...FEEDBACK_HAPPY[0],
+    id: "fb-4",
+    text: "Overall naming is inconsistent",
     anchor: { level: "model_wide", path: [] },
   },
 ];
@@ -151,6 +167,22 @@ describe("FeedbackList", () => {
     expect(screen.getByLabelText(/Filter by priority/i)).toBeInTheDocument();
     // No run selection on the Feedback tab — that facet is hidden.
     expect(screen.queryByLabelText(/Filter by selection/i)).not.toBeInTheDocument();
+  });
+
+  it("domain filter narrows the list and offers model-wide", () => {
+    feedbackData = FEEDBACK_MULTI_DOMAIN;
+    render(withQuery(<FeedbackList {...baseProps} />));
+    const idsShown = () => (sectionTreeProps.inputs as { id: string }[]).map((i) => i.id);
+    expect(idsShown()).toEqual(["fb-1", "fb-3", "fb-4"]);
+
+    fireEvent.click(screen.getByLabelText(/Filter by domain/i));
+    expect(screen.getByRole("option", { name: "inventory" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "sales" }));
+    expect(idsShown()).toEqual(["fb-3"]);
+
+    fireEvent.click(screen.getByLabelText(/Filter by domain/i));
+    fireEvent.click(screen.getByRole("option", { name: "Model-wide" }));
+    expect(idsShown()).toEqual(["fb-4"]);
   });
 
   it("wires a delete handler that calls deleteVibeInput with the input id", async () => {

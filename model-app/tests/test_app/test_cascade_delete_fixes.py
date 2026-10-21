@@ -1,7 +1,7 @@
 """Regression tests for F9 / F10 / non-cascade gate cascade-delete bugs.
 
 F10: ``DELETE /api/runs/{run_id}`` did not cascade RunOperation +
-RunNextVibeLink rows, 500ing on the test workspace where those FKs lack ON DELETE
+RunNextVibeLink rows, 500ing on a test workspace where those FKs lack ON DELETE
 CASCADE.
 
 F9: ``DELETE /api/businesses/{business_id}?cascade=true`` deleted

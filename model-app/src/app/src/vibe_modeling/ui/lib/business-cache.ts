@@ -2,7 +2,7 @@
  * Shared cache-invalidation helper for the `/api/businesses` list queries.
  *
  * The businesses list is queried in two shapes:
- *   - unfiltered:        ["/api/businesses", undefined]   (Businesses page)
+ *   - unfiltered:        ["/api/businesses", undefined]   (home, explorer provenance)
  *   - kind-filtered:     ["/api/businesses", {kind: "industry"}]  (Industries page)
  *
  * Invalidating with the bare `listBusinessesKey()` produces

@@ -212,7 +212,7 @@ describe("TableNode column type tags (walkthrough finding: keys mode is name+key
 });
 
 describe("TableNode product-type color resolution (case-insensitive)", () => {
-  // Live the test workspace run on 2026-05-06 surfaced 24 of 62 products rendering as
+  // A live test-workspace run on 2026-05-06 surfaced 24 of 62 products rendering as
   // gray because the agent's LLM emitted lowercase variants ("master",
   // "transactional") alongside the canonical "Master" / "Transactional".
   // The fix lowercase-normalizes at the boundary so both render correctly.

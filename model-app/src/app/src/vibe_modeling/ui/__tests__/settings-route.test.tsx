@@ -20,6 +20,12 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 
+const notifyErrorSpy = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/notify", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/notify")>("@/lib/notify")),
+  notifyError: notifyErrorSpy,
+}));
+
 import { AgentConfigSection, DiagramSettingsSection } from "@/routes/_sidebar/settings";
 import { firstRunFetcher } from "./helpers/first-run";
 import { useStrictConsole } from "./helpers/strict-console";
@@ -274,11 +280,10 @@ describe("AgentConfigSection — collect vibe run statistics toggle", () => {
       </QueryClientProvider>,
     );
 
-    const toggle = (await screen.findByLabelText(
-      /Collect vibe run statistics/i,
-    )) as HTMLInputElement;
-    expect(toggle.type).toBe("checkbox");
-    expect(toggle.checked).toBe(false);
+    const toggle = await screen.findByRole("checkbox", {
+      name: /Collect vibe run statistics/i,
+    });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
     // Tooltip body opens on hover (Radix portal). Open it and assert
     // the exact spec wording.
     fireEvent.pointerEnter(toggle);
@@ -321,10 +326,10 @@ describe("AgentConfigSection — collect vibe run statistics toggle", () => {
       </QueryClientProvider>,
     );
 
-    const toggle = (await screen.findByLabelText(
-      /Collect vibe run statistics/i,
-    )) as HTMLInputElement;
-    await waitFor(() => expect(toggle.checked).toBe(true));
+    const toggle = await screen.findByRole("checkbox", {
+      name: /Collect vibe run statistics/i,
+    });
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
   });
 
   it("includes collect_vibe_run_statistics in the PUT payload on Save", async () => {
@@ -369,13 +374,13 @@ describe("AgentConfigSection — collect vibe run statistics toggle", () => {
       </QueryClientProvider>,
     );
 
-    const toggle = (await screen.findByLabelText(
-      /Collect vibe run statistics/i,
-    )) as HTMLInputElement;
-    await waitFor(() => expect(toggle.checked).toBe(false));
+    const toggle = await screen.findByRole("checkbox", {
+      name: /Collect vibe run statistics/i,
+    });
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"));
 
     fireEvent.click(toggle);
-    await waitFor(() => expect(toggle.checked).toBe(true));
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
 
     const form = toggle.closest("form")!;
     fireEvent.submit(form);
@@ -508,5 +513,107 @@ describe("DiagramSettingsSection - column-mode preference (item 4, 0.6.6)", () =
     const [url, init] = putSpy.mock.calls[0];
     expect(url).toContain("/api/user/preferences/diagram.default_column_mode_focal");
     expect(JSON.parse(init.body as string)).toEqual({ value: "hide" });
+  });
+
+  it("reports a rejected change through notifyError and leaves no unhandled rejection", async () => {
+    notifyErrorSpy.mockClear();
+    const putSpy = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      firstRunFetcher({
+        "/api/user/preferences/diagram.default_column_mode": (url: string, init?: RequestInit) => {
+          putSpy(url, init);
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: "Server Error",
+            text: async () => '{"detail":"boom"}',
+          } as unknown as Response);
+        },
+        "/api/user/preferences": { status: 200, body: [] },
+      }),
+    );
+
+    render(
+      <QueryClientProvider client={makeClient()}>
+        <DiagramSettingsSection />
+      </QueryClientProvider>,
+    );
+
+    const comboboxes = await screen.findAllByRole("combobox");
+    fireEvent.click(comboboxes[0]);
+    fireEvent.click(await screen.findByText("All columns"));
+
+    await waitFor(() => expect(notifyErrorSpy).toHaveBeenCalledTimes(1));
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    expect(notifyErrorSpy.mock.calls[0][0]).toMatchObject({ status: 500 });
+  });
+
+  it("reports a rejected reset through notifyError and re-enables the button", async () => {
+    notifyErrorSpy.mockClear();
+    vi.stubGlobal(
+      "fetch",
+      firstRunFetcher({
+        "/api/user/preferences/diagram.default_column_mode": () =>
+          Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: "Server Error",
+            text: async () => "boom",
+          } as unknown as Response),
+        "/api/user/preferences": { status: 200, body: [] },
+      }),
+    );
+
+    render(
+      <QueryClientProvider client={makeClient()}>
+        <DiagramSettingsSection />
+      </QueryClientProvider>,
+    );
+
+    const reset = await screen.findByRole("button", { name: /Reset to defaults/i });
+    fireEvent.click(reset);
+
+    await waitFor(() => expect(notifyErrorSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Reset to defaults/i })).toBeEnabled(),
+    );
+  });
+
+  it("refreshes preferences exactly once when the second reset write fails", async () => {
+    notifyErrorSpy.mockClear();
+    const qc = makeClient();
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    vi.stubGlobal(
+      "fetch",
+      firstRunFetcher({
+        "/api/user/preferences/diagram.default_column_mode_focal": () =>
+          Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: "Server Error",
+            text: async () => "boom",
+          } as unknown as Response),
+        "/api/user/preferences/diagram.default_column_mode": () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ key: "diagram.default_column_mode", value: "hide", updated_at: "2026-07-01T00:00:00Z" }),
+          }),
+        "/api/user/preferences": { status: 200, body: [] },
+      }),
+    );
+
+    render(
+      <QueryClientProvider client={qc}>
+        <DiagramSettingsSection />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /Reset to defaults/i }));
+    await waitFor(() => expect(notifyErrorSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 });

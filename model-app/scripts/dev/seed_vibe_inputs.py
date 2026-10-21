@@ -39,7 +39,7 @@ fields. Seeded rows read back unchanged through
 
 Standalone usage against the dev/prod DB::
 
-    PYENV_VERSION=vibe-modeling python scripts/dev/seed_vibe_inputs.py \
+    python scripts/dev/seed_vibe_inputs.py \
         --business-id <bid> --version-id <vid> --agent 12 --user 6
 
 Programmatic usage (tests / fixtures)::

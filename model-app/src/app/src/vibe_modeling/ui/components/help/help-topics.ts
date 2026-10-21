@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Workflow, Keyboard, MessagesSquare, BookOpen, FileUp } from "lucide-react";
+import { Workflow, ClipboardCheck, Keyboard, MessagesSquare, BookOpen, FileUp } from "lucide-react";
 
 /**
  * The in-app help catalogue. One entry per help page; the help index and the
@@ -15,6 +15,8 @@ export interface HelpTopic {
   Icon: ComponentType<{ className?: string }>;
   group: "Getting started" | "Reference";
   status: "ready" | "soon";
+  /** Optional install-time feature the page documents; the help index and topic page show it only once the feature is ready. */
+  feature?: "assessment";
 }
 
 export const HELP_TOPICS: HelpTopic[] = [
@@ -25,6 +27,15 @@ export const HELP_TOPICS: HelpTopic[] = [
     Icon: Workflow,
     group: "Getting started",
     status: "ready",
+  },
+  {
+    slug: "assessment",
+    title: "Assessing a model against your data",
+    description: "Check an installed model against your bronze sources, review the results, and hand off to Genie Code.",
+    Icon: ClipboardCheck,
+    group: "Getting started",
+    status: "ready",
+    feature: "assessment",
   },
   {
     slug: "vibes",

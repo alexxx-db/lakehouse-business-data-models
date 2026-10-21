@@ -5,13 +5,10 @@ import {
 } from "@/components/home/recent-items";
 import { formatRelative } from "@/lib/date";
 
-/** Renders the deep-link for a recent item.
- *
- *  TODO(recently-visited): today's adapter emits only `business`/`industry`
- *  items, which both resolve to the business detail surface. When the real
- *  per-user feed lands (model versions, runs, vibe-input surfaces), branch on
- *  `item.kind` here to the model/run/inputs routes — those routes carry
- *  required search params, so the feed must supply them alongside the ids. */
+/** Renders the deep-link for a recent item. A `model_version` item reopens the
+ *  last place visited inside the version: the remembered domain, else the
+ *  version overview. `business` and `industry` items (both `businesses` rows)
+ *  link to the business detail surface. */
 function RecentItemLink({
   item,
   children,
@@ -21,6 +18,36 @@ function RecentItemLink({
   children: React.ReactNode;
   className?: string;
 }) {
+  if (item.kind === "model_version") {
+    const version = String(item.version);
+    if (item.domain) {
+      return (
+        <Link
+          to="/businesses/$businessId/model/$version/$scope/$domainName"
+          params={{
+            businessId: item.businessId,
+            version,
+            scope: item.scope,
+            domainName: item.domain,
+          }}
+          search={{ tab: "products" }}
+          className={className}
+        >
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <Link
+        to="/businesses/$businessId/model/$version/$scope"
+        params={{ businessId: item.businessId, version, scope: item.scope }}
+        search={{ tab: "overview" }}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
   return (
     <Link
       to="/businesses/$businessId"

@@ -6,7 +6,7 @@
     "source_cell": 9,
     "capture_reason": "Live event row unrecoverable: Lakebase had 0 matching rows; Delta time-travel past 168h retention; emitted in agent v0.7.x source as a deterministic single emit call. Fixture reflects the verbatim emit shape.",
     "verbatim_emit_call": "_vibe_writer.emit_step(stage_name=\"Version Resolution\", step_name=\"Version Collision Auto-Resolved\", status=\"stage_warning\", progress_increment=0.0, message=msg, result_json=payload)",
-    "incident_reference": "2026-05-04 the test workspace run, business='test eCommerce', target_scope='mvm'; original_target=1, new_target=3. App ignored event and let ModelVersion.version drift, requiring manual cascade-rename to recover.",
+    "incident_reference": "2026-05-04 test workspace run, business='test eCommerce', target_scope='mvm'; original_target=1, new_target=3. App ignored event and let ModelVersion.version drift, requiring manual cascade-rename to recover.",
     "parser_predicate_primary": "stage_name == \"Version Resolution\" AND step_name == \"Version Collision Auto-Resolved\"",
     "parser_predicate_hardening": "set(result_json.keys()) >= {\"original_target\", \"new_target\", \"target_scope\"}"
   },

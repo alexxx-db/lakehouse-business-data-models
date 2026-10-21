@@ -19,6 +19,7 @@ import {
   type RunListOut,
 } from "@/lib/api";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,12 +40,10 @@ import { formatRelative } from "@/lib/date";
  * "Runs for this version" cards (design: `.cmd-strip`). One bordered row:
  *   left  — a "Manage" overline + the version-lifecycle actions
  *           (Install / Uninstall / Generate samples / Re-sync, plus the
- *           ECM-only "Prepare new Vibe" entry to the compose surface);
+ *           "Prepare new Vibe" entry to the compose surface);
  *           preserves the same dialogs + logic the cards used.
  *   right — run-status summary ("N runs · latest <ago>") + an "Installed"
  *           success badge when deployed.
- *
- * Design-of-record: docs/design/model-overview/README.md.
  */
 export function CommandStrip({
   businessId,
@@ -148,9 +147,7 @@ export function CommandStrip({
   };
 
   const isInstalled = deploymentStatus === "deployed";
-  const versionLabel = scope
-    ? `v${versionNum} ${scope.toUpperCase()}`
-    : `v${versionNum}`;
+  const versionLabel = versionScopeLabel(versionNum, scope);
 
   const runRows = runs ?? [];
   const latest = runRows[0];
@@ -217,12 +214,9 @@ export function CommandStrip({
           />
           {launching === "samples" ? "Starting..." : "Generate samples"}
         </Button>
-        {/* "Prepare new Vibe" is ECM-only — you vibe from ECM, which regenerates
-            the MVM in the same run. It opens the prepare/compose surface (pick
-            inputs, then Start run) rather than launching a run directly with
-            nothing selected. The combined ECM+MVM operation is still selectable
-            on the run form. */}
-        {scope === "ecm" && (
+        {/* Opens the compose surface for this version's scope — pick inputs,
+            then Start run will iterate the version. */}
+        {scope && (
           <Button
             variant="ghost"
             size="sm"

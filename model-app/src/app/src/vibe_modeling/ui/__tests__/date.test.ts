@@ -9,6 +9,7 @@ import {
   formatDateTime,
   formatElapsedSeconds,
   formatDuration,
+  formatUntil,
 } from "@/lib/date";
 
 describe("formatDate", () => {
@@ -76,5 +77,22 @@ describe("formatDuration", () => {
 
   it("clamps negative inputs to 0", () => {
     expect(formatDuration(-1)).toBe("0ms");
+  });
+});
+
+describe("formatUntil", () => {
+  const now = Date.parse("2026-10-19T10:00:00Z");
+  it("formats a future time relative to now", () => {
+    expect(formatUntil("2026-10-19T10:00:20Z", now)).toBe("in under a minute");
+    expect(formatUntil("2026-10-19T10:15:00Z", now)).toBe("in 15 min");
+    expect(formatUntil("2026-10-19T11:00:00Z", now)).toBe("in 1 h");
+  });
+  it("treats an offset-less ISO string as UTC", () => {
+    expect(formatUntil("2026-10-19T10:05:00", now)).toBe("in 5 min");
+  });
+  it("falls back for past, missing or bad values", () => {
+    expect(formatUntil("2026-10-19T09:00:00Z", now)).toBe("soon");
+    expect(formatUntil(null, now)).toBe("soon");
+    expect(formatUntil("nope", now)).toBe("soon");
   });
 });

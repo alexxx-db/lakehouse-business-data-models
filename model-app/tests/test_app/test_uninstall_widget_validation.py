@@ -1,7 +1,5 @@
-"""Defects #1 and #2 from the 2026-05-18 the secondary test workspace uninstall pre-progress death.
-
-See ``uninstall-diagnosis-2026-05-18.md``
-for the full root-cause analysis. Two contracts are locked here:
+"""Defects #1 and #2 from a 2026-05-18 uninstall run that died before any
+progress event was written. Two contracts are locked here:
 
 Defect 1: ``core._widgets.build_widget_map`` must raise ``ValueError`` when
 ``operation`` requires ``model_version`` (uninstall / install / vibe / samples /
@@ -121,7 +119,7 @@ def test_create_run_version_bound_intent_with_no_model_version_returns_422(
     """Version-bound intent + no resolvable ModelVersion → 422, no dispatched run.
 
     ``seed_business`` intentionally provides NO completed ModelVersion —
-    exactly the the secondary test workspace orphan-schema state from the diagnosis report.
+    exactly the orphan-schema state observed in that run.
     """
     mock_run = MagicMock()
     mock_run.run_id = 100

@@ -1,6 +1,6 @@
 """Regression tests for the vibe-iterate ↔ agent handshake.
 
-Both bugs were observed on the test workspace during the (version, scope) PR's e2e:
+Both bugs were observed on a test workspace during the (version, scope) PR's e2e:
 
   1. ``_fetch_model_json`` raced ahead of the Volume FUSE write — Jobs
      API reported SUCCESS before the freshly-written ``model.json`` was

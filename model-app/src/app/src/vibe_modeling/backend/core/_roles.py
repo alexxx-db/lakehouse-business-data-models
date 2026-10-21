@@ -23,6 +23,7 @@ from databricks.sdk import WorkspaceClient
 from fastapi import Depends, HTTPException, Request
 
 from ._headers import DatabricksAppsHeaders, get_databricks_headers
+from ._identity import current_user_identity
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +60,8 @@ def resolve_user_role(
     if not RBAC_ENABLED:
         return UserRole.APP_ADMIN
 
-    # Prefer email (matches SCIM userName), fall back to preferred username
-    user_name = headers.user_email or headers.user_name
+    # Email first (matches SCIM userName), then preferred username
+    user_name = current_user_identity(headers)
     if not user_name:
         logger.debug("No user identity in headers, defaulting to APP_ADMIN (dev mode)")
         return UserRole.APP_ADMIN
